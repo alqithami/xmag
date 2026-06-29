@@ -1,6 +1,6 @@
 experiment:
   name: real_5g_nidd_synflood
-  output_dir: runs/real_5g_nidd_synflood
+  output_dir: runs/real_holdout_synflood
   random_state: 42
   test_size: 0.30
   validation_size: 0.20

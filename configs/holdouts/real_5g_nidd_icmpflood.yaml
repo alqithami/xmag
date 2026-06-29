@@ -1,6 +1,6 @@
 experiment:
-  name: real_5g_nidd_synflood
-  output_dir: runs/real_5g_nidd_synflood
+  name: real_5g_nidd_icmpflood
+  output_dir: runs/real_holdout_icmpflood
   random_state: 42
   test_size: 0.30
   validation_size: 0.20
@@ -10,7 +10,7 @@ dataset:
   path: data/5G-NIDD/Encoded.csv
   label_column: Attack Type
   benign_labels: [Benign, BENIGN, benign, Normal, normal]
-  unknown_attack: SYNFlood
+  unknown_attack: ICMPFlood
   drop_columns: [Attack Tool, Label, sVid, dVid, "54"]
   leakage_patterns: [label, attack tool, attack_tool, scenario, timestamp, time, source ip, destination ip, src ip, dst ip, srcport, dstport]
 

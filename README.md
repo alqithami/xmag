@@ -1,81 +1,100 @@
 # X-MAG-IDS
 
-**X-MAG-IDS** is a reproducible research repository for **explanation-as-communication multi-agent intrusion detection** in 5G-enabled IoT networks.
+**X-MAG-IDS** is a reproducible research repository for **explanation-aware multi-agent intrusion detection** in 5G-enabled IoT networks.
 
-The key idea is simple: instead of sending raw traffic or full feature vectors, each lightweight security agent sends compact top-k explanation tokens. A coalition-level coordinator aggregates these tokens to detect known attacks and flag unknown/zero-day attacks.
-
-## Research question
-
-Can lightweight edge security agents communicate compact explanation tokens while preserving intrusion-detection and zero-day detection performance under communication and computation budgets?
-
-## Repository contents
+The current working method is a compact hybrid agent message:
 
 ```text
-xmag_pipeline.py              Complete runnable first pipeline
-configs/                      YAML experiment configurations
-docs/                         Reviewer guide and experimental protocol
-manuscript/                   LaTeX manuscript scaffold
-tests/                        Smoke tests
-.github/workflows/ci.yml      Continuous-integration test
+X-MAG-DH / hybrid message = top-m class evidence + top-k explanation evidence + local anomaly scalar
 ```
 
-## Quick start
+The implementation supports 5G-NIDD schema auditing, leave-one-attack-family-out evaluation, open-set scoring, communication-cost accounting, and diagnostic sweeps over compact agent-message designs.
+
+## Current status
+
+The repository has moved beyond the synthetic smoke test. The committed tables under `results/tables/` are **real 5G-NIDD runs** using the extracted `Encoded.csv` file. The current 24-byte X-MAG-DH setting gives strong known-class performance but exposes two failure cases, especially `UDPFlood`, which is now the target of a focused failure-case sweep.
+
+## Install
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip
+python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
-pytest -q
 ```
 
-Generate a synthetic 5G-NIDD-like smoke-test dataset and run the pipeline:
+The public repository still keeps the original one-file smoke pipeline in `xmag_pipeline.py`. The hybrid-message scripts are reviewer artifacts used with the modular local codebase developed during experimentation.
+
+## Dataset setup
+
+The dataset is not redistributed here. Download `Encoded.zip` from the 5G-NIDD dataset page, then place/extract it locally:
 
 ```bash
-python xmag_pipeline.py synth --out data/synthetic_5g_nidd_like.csv --rows 1200
-python xmag_pipeline.py audit --csv data/synthetic_5g_nidd_like.csv --outdir runs/synthetic_audit
-python xmag_pipeline.py run --config configs/synthetic_smoke.yaml
-python xmag_pipeline.py summarize --run-dir runs/synthetic_smoke
+mkdir -p data/5G-NIDD
+unzip -o data/5G-NIDD/Encoded.zip -d data/5G-NIDD/encoded_extracted
+cp data/5G-NIDD/encoded_extracted/Encoded.csv data/5G-NIDD/Encoded.csv
 ```
 
-## Running on 5G-NIDD
-
-Download 5G-NIDD separately according to its terms, then edit `dataset.path` in `configs/5g_nidd_syn_flood.yaml`:
+Confirm:
 
 ```bash
-python xmag_pipeline.py audit --csv /path/to/Encoded.csv --outdir runs/5g_nidd_audit
-python xmag_pipeline.py run --config configs/5g_nidd_syn_flood.yaml
+ls -lh data/5G-NIDD/Encoded.csv
+wc -l data/5G-NIDD/Encoded.csv
 ```
 
-Default pilot choices:
+Expected line count for the real encoded file is about `1,215,891`, including the header.
 
-- primary dataset: 5G-NIDD `Encoded.csv`
-- first unknown holdout: `SYN Flood`
-- fallback holdout: `UDP Scan`
-- transparent edge-monitor agents: `N = 8`
-- token budgets: `k in {1, 3, 5}`
+## Audit the real dataset
 
-## Implemented baselines
+```bash
+python xmag_pipeline.py audit --csv data/5G-NIDD/Encoded.csv --outdir runs/real_5g_nidd_audit
+```
 
-1. Centralized full-feature classifier.
-2. Local owner-agent-only classifier.
-3. Majority vote across agents.
-4. Logit-average communication.
-5. Raw top-k feature coordinator.
-6. Explanation-token coordinator.
+Expected attack labels include:
 
-## Reported metrics
+```text
+Benign, HTTPFlood, ICMPFlood, SYNFlood, SYNScan, SlowrateDoS, TCPConnectScan, UDPFlood, UDPScan
+```
 
-- known accuracy
-- known balanced accuracy
-- known macro-F1
-- unknown AUROC
-- unknown recall at calibrated threshold
-- known false-alarm rate at calibrated threshold
-- message bytes per flow
-- training time
-- prediction time
+Use the exact label names. The real dataset uses `SYNFlood`, not `SYN Flood`; and `UDPScan`, not `UDP Scan`.
+
+## Current compact result
+
+The current compact setting is:
+
+```text
+method = xmag_top1_class_token_anomaly_fusion
+k = 1
+top_m = 1
+alpha = 1.0
+message = 24 bytes per flow
+```
+
+Summary from `results/tables/table_main_xmag_dh_24b_all_holdouts.csv`:
+
+```text
+mean known_macro_f1 = 0.997936
+mean unknown_auroc = 0.903635
+mean unknown_recall_at_threshold = 0.744105
+message_bytes_per_flow = 24
+```
+
+Failure case:
+
+```text
+UDPFlood unknown: unknown_auroc = 0.489338, recall = 0.013294
+```
+
+## Next experiment
+
+Run the focused failure-case sweep over `UDPFlood` and `SlowrateDoS`:
+
+```bash
+bash scripts/run_failure_grid.sh
+```
+
+This checks whether increasing `top_m` or changing alpha recovers the failure cases without giving up lightweight communication.
 
 ## Scientific caution
 
-The synthetic data path is only a smoke test. Paper claims should be made only after running the pipeline on the selected public IDS datasets and completing leakage-control inspection.
+Do not report synthetic smoke-test numbers as paper results. Only tables produced from the real extracted `data/5G-NIDD/Encoded.csv` should be used, and current tables should be interpreted together with the documented UDPFlood failure mode.

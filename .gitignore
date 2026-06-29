@@ -4,19 +4,27 @@ __pycache__/
 .venv/
 venv/
 .env
-data/*.csv
-data/*.parquet
-data/*.pkl
-runs/
-results/
-artifacts/
-*.joblib
-*.pkl
 .DS_Store
 .vscode/
 .idea/
+
+# Do not commit raw datasets or local run artifacts.
+data/5G-NIDD/
+data/raw/
+runs/
+artifacts/
+*.joblib
+*.pkl
+*.parquet
+
+# LaTeX build artifacts.
 *.aux
 *.log
 *.out
 *.bbl
 *.blg
+*.fls
+*.fdb_latexmk
+
+# Curated result tables under results/tables/ may be tracked.
+results/generated/
