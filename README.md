@@ -1,6 +1,6 @@
 # X-MAG-IDS
 
-**X-MAG-IDS** is a reproducible research repository for **explanation-as-communication multi-agent intrusion detection** in 5G-enabled IoT networks.
+**X-MAG-IDS** is a reproducible repository for **explanation-as-communication multi-agent intrusion detection** in 5G-enabled IoT networks.
 
 The key idea is simple: instead of sending raw traffic or full feature vectors, each lightweight security agent sends compact top-k explanation tokens. A coalition-level coordinator aggregates these tokens to detect known attacks and flag unknown/zero-day attacks.
 
@@ -75,7 +75,3 @@ Default pilot choices:
 - message bytes per flow
 - training time
 - prediction time
-
-## Scientific caution
-
-The synthetic data path is only a smoke test. Paper claims should be made only after running the pipeline on the selected public IDS datasets and completing leakage-control inspection.
