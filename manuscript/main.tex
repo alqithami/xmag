@@ -1,0 +1,31 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,tabularx,xcolor,hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+\newcommand{\framework}{\textsc{X-MAG-IDS}}
+\title{\framework{}: Explanation-as-Communication for Lightweight Multi-Agent Intrusion Detection in 5G-IoT Networks}
+\author{Author Name(s) Placeholder\\Department / University Placeholder}
+\date{Draft repository version: 0.1}
+\begin{document}
+\maketitle
+\begin{abstract}
+5G-enabled Internet of Things environments require intrusion detection systems that are accurate, adaptive, explainable, and lightweight enough for edge operation. Existing intrusion detection approaches often rely on centralized traffic analysis and post-hoc explainability, which limits their applicability in distributed and resource-constrained settings. This paper proposes \framework{}, an explainable multi-agent intrusion detection framework in which edge security agents perform local detection and communicate compact explanation tokens rather than raw traffic. Each token contains a local risk estimate and the top-$k$ explanatory feature contributions under a communication budget. A coalition-level coordinator aggregates these messages to detect known attacks and flag unknown attack families using an open-set protocol. The planned evaluation compares centralized, local-only, majority-vote, logit-only, raw top-$k$, and explanation-token communication baselines using public 5G/IoT intrusion datasets. The evaluation reports detection performance, unknown-attack detection, communication overhead, inference cost, and explanation fidelity.
+\end{abstract}
+\section{Introduction}
+The integration of IoT systems with 5G networks expands the attack surface of resource-constrained devices, edge gateways, and mission-critical services. This work investigates a different design principle: explanations should not merely justify predictions after the fact; they should become the communication primitive used by security agents to cooperate.
+\section{Research Questions}
+RQ1: Can explanation-token communication approximate full-feature IDS performance under strict message budgets? RQ2: Does explanation-token communication improve zero-day/open-set detection compared with logit-only communication? RQ3: How sensitive is detection to the number of agents and token budget $k$?
+\section{Framework Overview}
+Let $a_i \in \mathcal{A}$ denote an edge security agent. At time window $t$, agent $a_i$ observes local flow features $x_{i,t}$ and produces a local risk score, predictive distribution, uncertainty, and explanation token $e_{i,t}^{(k)}$. The top-$k$ token is $e_{i,t}^{(k)} = \{(j, c_{i,t,j}) : j \in \operatorname{TopK}(|c_{i,t}|, k)\}$.
+\section{Experimental Protocol}
+The first frozen protocol uses 5G-NIDD as the pilot dataset, transparent edge-monitor agents when physical device columns are absent, and leave-one-attack-family-out evaluation. The first unknown class is SYN Flood, with UDP Scan as a fallback. The initial token budgets are $k \in \{1,3,5\}$.
+\section{Baselines and Metrics}
+Baselines are centralized full-feature classification, local owner-agent-only classification, majority vote, logit-average communication, raw top-$k$ communication, and explanation-token communication. Metrics are known macro-F1, known balanced accuracy, unknown AUROC, unknown recall at threshold, known false-alarm rate, message bytes per flow, training time, and prediction time.
+\section{Immediate Next Step}
+The immediate next step is to run the schema audit and smoke-test pipeline on the actual 5G-NIDD \texttt{Encoded.csv} file, inspect the dropped columns, and freeze the first leakage-control table before reporting results.
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{9}
+\bibitem{lundberg2017shap} S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predictions,'' in \emph{NeurIPS}, 2017.
+\bibitem{breiman2001rf} L. Breiman, ``Random forests,'' \emph{Machine Learning}, 2001.
+\end{thebibliography}
+\end{document}

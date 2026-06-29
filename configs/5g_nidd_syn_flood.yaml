@@ -1,0 +1,29 @@
+experiment:
+  name: 5g_nidd_syn_flood
+  output_dir: runs/5g_nidd_syn_flood
+  random_state: 42
+  test_size: 0.30
+  validation_size: 0.20
+  max_rows: null
+
+dataset:
+  path: /path/to/5G-NIDD/Encoded.csv
+  label_column: Attack Type
+  unknown_attack: SYN Flood
+  drop_columns: [Attack Tool, Label, sVid, dVid, "54"]
+  leakage_patterns: [label, attack tool, attack_tool, scenario, timestamp, time, source ip, destination ip, src ip, dst ip, srcport, dstport]
+
+agents:
+  n_agents: 8
+  mapping: transparent_hash
+
+model:
+  n_estimators: 150
+  min_samples_leaf: 2
+  class_weight: balanced_subsample
+
+explanation:
+  k_values: [1, 3, 5]
+  message_overhead_bytes: 8
+  feature_id_bytes: 2
+  value_bytes: 4
