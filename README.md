@@ -12,21 +12,22 @@ Each local agent sends a 24-byte message. A coalition classifier predicts known 
 
 ## Current status
 
-The repository has moved beyond synthetic smoke testing. The current main result uses real 5G-NIDD `Encoded.csv` with leave-one-attack-family-out evaluation across eight attack holdouts.
+The repository has moved beyond synthetic smoke testing. The current main result uses real 5G-NIDD `Encoded.csv` with leave-one-attack-family-out evaluation across eight attack holdouts and a three-seed stability sweep over random states `7`, `42`, and `123`.
 
-Main result from `results/tables/table_xmag_cos_all_holdouts_summary.csv`:
+Three-seed stability result from `results/tables/table_seed_stability_cos24_overall.csv`:
 
 ```text
 X-MAG-COS-24B
-mean known macro-F1  = 0.997936
-mean unknown AUROC   = 0.950247
-mean unknown recall  = 0.851704
-worst unknown AUROC  = 0.789850
-worst unknown recall = 0.424966
+known macro-F1       = 0.998053 +/- 0.000496
+unknown AUROC        = 0.943859 +/- 0.093135
+unknown recall       = 0.839499 +/- 0.279391
+false-alarm rate     = 0.050306 +/- 0.000836
+worst unknown AUROC  = 0.709369
+worst unknown recall = 0.218584
 message size         = 24 bytes per flow
 ```
 
-The 30-byte variant gives negligible improvement while increasing communication and runtime, so **X-MAG-COS-24B** is the main paper method.
+The earlier single-seed result for seed `42` was stronger on the hardest UDPFlood case, but the three-seed sweep gives the more conservative paper claim. UDPFlood remains the limiting holdout.
 
 ## Install
 
@@ -114,8 +115,8 @@ The current manuscript draft is in:
 manuscript/main.tex
 ```
 
-It has been updated to frame the method as **X-MAG-COS: Composite Open-Set Scoring for Explanation-Aware Multi-Agent IDS**.
+It has been updated to frame the method as **X-MAG-COS: Composite Open-Set Scoring for Explanation-Aware Multi-Agent IDS** and now includes the three-seed stability analysis.
 
 ## Scientific caution
 
-Do not report synthetic smoke-test numbers as paper results. Only tables produced from the real extracted `data/5G-NIDD/Encoded.csv` should be used. The current results are strong but still require seed-stability validation before final statistical claims.
+Do not report synthetic smoke-test numbers as paper results. Only tables produced from the real extracted `data/5G-NIDD/Encoded.csv` should be used. The seed-stability result is the current conservative result; single-seed tables should be described as method-selection or ablation evidence.
