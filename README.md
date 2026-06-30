@@ -2,17 +2,31 @@
 
 **X-MAG-IDS** is a reproducible research repository for **explanation-aware multi-agent intrusion detection** in 5G-enabled IoT networks.
 
-The current working method is a compact hybrid agent message:
+The current frozen method is:
 
 ```text
-X-MAG-DH / hybrid message = top-m class evidence + top-k explanation evidence + local anomaly scalar
+X-MAG-COS-24B = top-1 class evidence + top-1 explanation evidence + local anomaly scalar
 ```
 
-The implementation supports 5G-NIDD schema auditing, leave-one-attack-family-out evaluation, open-set scoring, communication-cost accounting, and diagnostic sweeps over compact agent-message designs.
+Each local agent sends a 24-byte message. A coalition classifier predicts known attack classes, and a separate composite open-set head detects unknown attacks using message residual, owner-agent uncertainty, and anomaly evidence.
 
 ## Current status
 
-The repository has moved beyond the synthetic smoke test. The committed tables under `results/tables/` are **real 5G-NIDD runs** using the extracted `Encoded.csv` file. The current 24-byte X-MAG-DH setting gives strong known-class performance but exposes two failure cases, especially `UDPFlood`, which is now the target of a focused failure-case sweep.
+The repository has moved beyond synthetic smoke testing. The current main result uses real 5G-NIDD `Encoded.csv` with leave-one-attack-family-out evaluation across eight attack holdouts.
+
+Main result from `results/tables/table_xmag_cos_all_holdouts_summary.csv`:
+
+```text
+X-MAG-COS-24B
+mean known macro-F1  = 0.997936
+mean unknown AUROC   = 0.950247
+mean unknown recall  = 0.851704
+worst unknown AUROC  = 0.789850
+worst unknown recall = 0.424966
+message size         = 24 bytes per flow
+```
+
+The 30-byte variant gives negligible improvement while increasing communication and runtime, so **X-MAG-COS-24B** is the main paper method.
 
 ## Install
 
@@ -22,8 +36,6 @@ source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
-
-The public repository still keeps the original one-file smoke pipeline in `xmag_pipeline.py`. The hybrid-message scripts are reviewer artifacts used with the modular local codebase developed during experimentation.
 
 ## Dataset setup
 
@@ -42,7 +54,7 @@ ls -lh data/5G-NIDD/Encoded.csv
 wc -l data/5G-NIDD/Encoded.csv
 ```
 
-Expected line count for the real encoded file is about `1,215,891`, including the header.
+The real encoded file used in our run has about `1,215,891` lines including the header.
 
 ## Audit the real dataset
 
@@ -50,7 +62,7 @@ Expected line count for the real encoded file is about `1,215,891`, including th
 python xmag_pipeline.py audit --csv data/5G-NIDD/Encoded.csv --outdir runs/real_5g_nidd_audit
 ```
 
-Expected attack labels include:
+Expected attack labels:
 
 ```text
 Benign, HTTPFlood, ICMPFlood, SYNFlood, SYNScan, SlowrateDoS, TCPConnectScan, UDPFlood, UDPScan
@@ -58,43 +70,52 @@ Benign, HTTPFlood, ICMPFlood, SYNFlood, SYNScan, SlowrateDoS, TCPConnectScan, UD
 
 Use the exact label names. The real dataset uses `SYNFlood`, not `SYN Flood`; and `UDPScan`, not `UDP Scan`.
 
-## Current compact result
-
-The current compact setting is:
-
-```text
-method = xmag_top1_class_token_anomaly_fusion
-k = 1
-top_m = 1
-alpha = 1.0
-message = 24 bytes per flow
-```
-
-Summary from `results/tables/table_main_xmag_dh_24b_all_holdouts.csv`:
-
-```text
-mean known_macro_f1 = 0.997936
-mean unknown_auroc = 0.903635
-mean unknown_recall_at_threshold = 0.744105
-message_bytes_per_flow = 24
-```
-
-Failure case:
-
-```text
-UDPFlood unknown: unknown_auroc = 0.489338, recall = 0.013294
-```
-
-## Next experiment
-
-Run the focused failure-case sweep over `UDPFlood` and `SlowrateDoS`:
+## Reproduce the frozen all-holdout COS run
 
 ```bash
-bash scripts/run_failure_grid.sh
+for CFG in configs/holdouts/real_5g_nidd_*.yaml
+do
+  NAME=$(basename "$CFG" .yaml)
+  echo "Running composite $NAME"
+
+  python scripts/xmag_composite_open_score_diagnostic.py \
+    --config "$CFG" \
+    --out "runs/composite_${NAME}" \
+    --top-m 1 2 \
+    --k-values 1 \
+    --gamma 0.25
+done
 ```
 
-This checks whether increasing `top_m` or changing alpha recovers the failure cases without giving up lightweight communication.
+Use `X-MAG-COS-24B` as the main method: `top_m=1`, `k=1`, and score `linear_max_resid_owner_b025__uncert_anomaly_b05_gamma_0.25`.
+
+## Seed-stability sweep
+
+Run the complete small stability experiment:
+
+```bash
+bash scripts/run_seed_stability_cos24.sh
+python scripts/aggregate_seed_stability.py
+```
+
+This runs all eight 5G-NIDD holdouts for random states `7`, `42`, and `123`, then writes:
+
+```text
+results/tables/table_seed_stability_cos24_all_rows.csv
+results/tables/table_seed_stability_cos24_by_attack.csv
+results/tables/table_seed_stability_cos24_overall.csv
+```
+
+## Paper files
+
+The current manuscript draft is in:
+
+```text
+manuscript/main.tex
+```
+
+It has been updated to frame the method as **X-MAG-COS: Composite Open-Set Scoring for Explanation-Aware Multi-Agent IDS**.
 
 ## Scientific caution
 
-Do not report synthetic smoke-test numbers as paper results. Only tables produced from the real extracted `data/5G-NIDD/Encoded.csv` should be used, and current tables should be interpreted together with the documented UDPFlood failure mode.
+Do not report synthetic smoke-test numbers as paper results. Only tables produced from the real extracted `data/5G-NIDD/Encoded.csv` should be used. The current results are strong but still require seed-stability validation before final statistical claims.
