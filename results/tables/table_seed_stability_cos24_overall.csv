@@ -1,0 +1,2 @@
+scope,known_macro_f1_mean,known_macro_f1_std,unknown_auroc_mean,unknown_auroc_std,unknown_recall_mean,unknown_recall_std,false_alarm_mean,false_alarm_std,worst_unknown_auroc,worst_unknown_recall,message_bytes_per_flow
+MEAN_OVER_ALL_ROWS,0.998052632899181,0.0004957853190648,0.9438588551602668,0.0931350642956518,0.8394990837422115,0.2793905847154566,0.0503060327744972,0.0008364306914808,0.709368605243857,0.2185843070775857,24
