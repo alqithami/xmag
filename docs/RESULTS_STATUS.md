@@ -1,55 +1,57 @@
 # Results status
 
-The committed result tables are preliminary real 5G-NIDD tables from the extracted `Encoded.csv` file.
+The current main method is **X-MAG-COS-24B**.
 
-## Main compact setting: X-MAG-DH-24B
-
-`results/tables/table_main_xmag_dh_24b_all_holdouts.csv` summarizes the current compact setting:
+## Frozen method
 
 ```text
-method = xmag_top1_class_token_anomaly_fusion
+message = top-1 class evidence + top-1 explanation evidence + local anomaly scalar
 k = 1
 top_m = 1
-alpha = 1.0
-message = 24 bytes per flow
+score = linear_max_resid_owner_b025__uncert_anomaly_b05_gamma_0.25
+message_bytes_per_flow = 24
 ```
 
-Summary:
+## Main all-holdout summary
+
+From `results/tables/table_xmag_cos_all_holdouts_summary.csv`:
 
 ```text
-mean known_macro_f1 = 0.997936
-mean unknown_auroc = 0.903635
-mean unknown_recall_at_threshold = 0.744105
-max false alarm = 0.050912
-message = 24 bytes per flow
+X-MAG-COS-24B
+mean known_macro_f1     = 0.997936
+min known_macro_f1      = 0.997021
+mean unknown_auroc      = 0.950247
+min unknown_auroc       = 0.789850
+mean unknown_recall     = 0.851704
+min unknown_recall      = 0.424966
+max false alarm         = 0.051147
+message size            = 24 bytes
+mean runtime            = 10.34 s
 ```
 
-Failure case:
+## Why COS replaced DH
+
+The earlier X-MAG-DH-24B design used the same 24-byte message but relied on coordinator uncertainty for open-set scoring. It failed on UDPFlood:
 
 ```text
-UDPFlood unknown:
-unknown_auroc = 0.489338
-unknown_recall_at_threshold = 0.013294
+DH-24B UDPFlood AUROC  = 0.489338
+DH-24B UDPFlood recall = 0.013294
 ```
 
-## Baseline comparison
-
-`results/tables/table_xmag_vs_baseline_all_holdouts.csv` compares the 24-byte X-MAG setting with the 36-byte logit-average-plus-local-anomaly baseline.
-
-Summary:
+X-MAG-COS-24B recovers this failure case:
 
 ```text
-baseline mean AUROC = 0.918934
-X-MAG mean AUROC = 0.903635
-baseline mean recall = 0.833425
-X-MAG mean recall = 0.744105
-message reduction = 33.33%
+COS-24B UDPFlood AUROC  = 0.789850
+COS-24B UDPFlood recall = 0.424966
 ```
 
-## Interpretation
+## Next required validation
 
-Current evidence supports a nuanced paper claim:
+Run seed stability over random states `7`, `42`, and `123`:
 
-> Compact hybrid explanation messages preserve known-attack classification and reduce communication cost, but UDPFlood exposes a failure mode where a 24-byte message is insufficient for robust open-set detection.
+```bash
+bash scripts/run_seed_stability_cos24.sh
+python scripts/aggregate_seed_stability.py
+```
 
-The next experiment is a targeted failure-case sweep over `UDPFlood` and `SlowrateDoS`.
+The manuscript should not make final statistical claims until this stability table is available.

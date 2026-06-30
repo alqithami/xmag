@@ -1,31 +1,211 @@
 \documentclass[11pt]{article}
+
 \usepackage[a4paper,margin=1in]{geometry}
-\usepackage{amsmath,amssymb,booktabs,tabularx,xcolor,hyperref}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{ragged2e}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{graphicx}
+
 \hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
-\newcommand{\framework}{\textsc{X-MAG-IDS}}
-\title{\framework{}: Explanation-as-Communication for Lightweight Multi-Agent Intrusion Detection in 5G-IoT Networks}
-\author{Author Name(s) Placeholder\\Department / University Placeholder}
-\date{Draft repository version: 0.1}
+
+\newcommand{\framework}{\textsc{X-MAG-COS}}
+\newcommand{\dhmethod}{\textsc{X-MAG-DH-24B}}
+\newcommand{\cosmethod}{\textsc{X-MAG-COS-24B}}
+\newcommand{\draftnote}[1]{\par\noindent\textcolor{blue}{\textbf{Draft note:} #1}\par}
+
+\title{\framework{}: Composite Open-Set Scoring for Explanation-Aware Multi-Agent Intrusion Detection in 5G-IoT Networks}
+
+\author{Author Name(s) Placeholder\\Department / University Placeholder\\\texttt{email@domain.edu}}
+
+\date{Article draft, v0.4 --- \today}
+
 \begin{document}
 \maketitle
+
 \begin{abstract}
-5G-enabled Internet of Things environments require intrusion detection systems that are accurate, adaptive, explainable, and lightweight enough for edge operation. Existing intrusion detection approaches often rely on centralized traffic analysis and post-hoc explainability, which limits their applicability in distributed and resource-constrained settings. This paper proposes \framework{}, an explainable multi-agent intrusion detection framework in which edge security agents perform local detection and communicate compact explanation tokens rather than raw traffic. Each token contains a local risk estimate and the top-$k$ explanatory feature contributions under a communication budget. A coalition-level coordinator aggregates these messages to detect known attacks and flag unknown attack families using an open-set protocol. The planned evaluation compares centralized, local-only, majority-vote, logit-only, raw top-$k$, and explanation-token communication baselines using public 5G/IoT intrusion datasets. The evaluation reports detection performance, unknown-attack detection, communication overhead, inference cost, and explanation fidelity.
+5G-enabled Internet of Things (IoT) environments require intrusion detection systems that are lightweight, explainable, and robust to unknown attacks. Existing IDS pipelines often assume centralized feature access and use explainability only as a post-hoc reporting tool. This paper proposes \framework{}, an explanation-aware multi-agent IDS in which lightweight local agents transmit compact evidence messages instead of raw traffic. Each 24-byte agent message contains top-1 class evidence, top-1 explanation evidence, and a local anomaly scalar. A coalition classifier predicts known attacks from these compact messages, while a separate composite open-set head combines message residuals, owner-agent uncertainty, and anomaly evidence to detect unknown attack families. On real 5G-NIDD leave-one-attack-family-out experiments, the current single-seed \cosmethod{} result achieves mean known macro-F1 of 0.9979, mean unknown AUROC of 0.9502, and mean unknown recall of 0.8517 at approximately 5\% false-alarm rate, while retaining a 24-byte per-flow message. The results also show that relying on coordinator uncertainty alone fails on UDPFlood; composite open-set scoring improves the worst-case unknown recall from 0.0133 to 0.4250 without increasing message size. This draft freezes the main method, reports the first real 5G-NIDD result tables, and defines the next seed-stability sweep required before final manuscript claims.
 \end{abstract}
-\section{Introduction}
-The integration of IoT systems with 5G networks expands the attack surface of resource-constrained devices, edge gateways, and mission-critical services. This work investigates a different design principle: explanations should not merely justify predictions after the fact; they should become the communication primitive used by security agents to cooperate.
+
+\noindent\textbf{Keywords---} Intrusion detection; 5G security; IoT security; multi-agent systems; explainable AI; open-set recognition; zero-day detection; lightweight machine learning; anomaly detection.
+
+\section{Positioning}
+
+This manuscript is positioned around a central idea: explanations should not only justify intrusion detection decisions after they are made; in distributed IoT/5G environments, compact explanation-aware messages can become the communication primitive through which lightweight security agents collaborate. The current method, \framework{}, moves beyond explanation-only communication by adding a dedicated composite open-set head. The paper's key claim is therefore not that explanations alone solve intrusion detection. The stronger claim is that compact explanation-aware communication is viable for known-attack classification, while robust zero-day behavior requires a separate open-set scoring mechanism.
+
+\draftnote{This draft reports real 5G-NIDD results from a single random seed. The next required step is the random-state stability sweep before final statistical claims.}
+
+\section{Motivation and Research Gap}
+
+IoT devices connected through 5G networks create a distributed, heterogeneous, and resource-constrained attack surface. Traditional centralized IDS models often assume full access to all traffic features, while many explainable IDS studies apply SHAP, LIME, or feature-importance explanations only after training. Such designs do not directly address the communication and computation constraints of distributed IoT/edge security agents.
+
+The research gap addressed here is the lack of an IDS formulation that simultaneously handles: (i) multi-agent cooperation, (ii) strict communication budgets, (iii) interpretable evidence exchange, and (iv) leave-one-attack-family-out unknown-attack evaluation. The initial explanation-only approach preserved known-class performance but exposed failure cases for open-set detection. This motivates \framework{}, where the classification head and open-set head are separated.
+
 \section{Research Questions}
-RQ1: Can explanation-token communication approximate full-feature IDS performance under strict message budgets? RQ2: Does explanation-token communication improve zero-day/open-set detection compared with logit-only communication? RQ3: How sensitive is detection to the number of agents and token budget $k$?
-\section{Framework Overview}
-Let $a_i \in \mathcal{A}$ denote an edge security agent. At time window $t$, agent $a_i$ observes local flow features $x_{i,t}$ and produces a local risk score, predictive distribution, uncertainty, and explanation token $e_{i,t}^{(k)}$. The top-$k$ token is $e_{i,t}^{(k)} = \{(j, c_{i,t,j}) : j \in \operatorname{TopK}(|c_{i,t}|, k)\}$.
+
+\begin{description}[leftmargin=!,labelwidth=1.2cm]
+    \item[RQ1] Can compact multi-agent messages preserve known-attack detection under a strict byte budget?
+    \item[RQ2] Can a separate composite open-set head improve worst-case unknown-attack recall compared with coordinator uncertainty alone?
+    \item[RQ3] What is the tradeoff between message size, runtime, known-class macro-F1, unknown AUROC, and unknown recall?
+    \item[RQ4] Are the all-holdout results stable across random seeds?
+\end{description}
+
+\section{Method: \framework{}}
+
+\subsection{Agent Message}
+
+Let $a_i \in \mathcal{A}$ denote a lightweight IDS agent. Each agent observes a local flow vector $x_i$ and produces a local class-probability vector $p_i$, an explanation contribution vector $\phi_i$, and an anomaly score $z_i$. Instead of transmitting raw features, the agent sends a compact message:
+
+\begin{equation}
+    m_i = \left[\operatorname{TopM}(p_i, m),\; \operatorname{TopK}(\phi_i, k),\; z_i\right].
+\end{equation}
+
+The current main method freezes $m=1$ and $k=1$. With the byte accounting used in the implementation, this gives a 24-byte per-flow message:
+
+\begin{equation}
+    \cosmethod{} = \operatorname{Top1ClassEvidence} + \operatorname{Top1ExplanationEvidence} + \operatorname{LocalAnomalyScalar}.
+\end{equation}
+
+\subsection{Known-Attack Classification Head}
+
+The classification head is a coalition-level coordinator trained on the compact messages $m_i$. It predicts the known-class label $\hat{y}$:
+
+\begin{equation}
+    \hat{y} = g_{\text{cls}}(m_i).
+\end{equation}
+
+In the current implementation, the local agents use lightweight random-forest classifiers and the coordinator is a logistic one-vs-rest classifier over compact message features. This is intentionally simple to keep the first result reproducible and lightweight.
+
+\subsection{Composite Open-Set Head}
+
+The open-set head does not rely only on the coordinator's maximum class probability. Earlier experiments showed that coordinator uncertainty failed badly for UDPFlood. Instead, \framework{} computes a composite score from complementary signals:
+
+\begin{equation}
+    s_{\text{open}} = \gamma \max(s_{\text{resid-owner}}, s_{\text{uncert-anom}}) + (1-\gamma) s_{\text{uncert-anom}},
+\end{equation}
+
+where $s_{\text{resid-owner}}$ combines message-prototype residual and owner-agent uncertainty, and $s_{\text{uncert-anom}}$ combines owner-agent uncertainty and local anomaly evidence. The frozen score used by \cosmethod{} is:
+
+\begin{equation}
+\texttt{linear\_max\_resid\_owner\_b025\_\_uncert\_anomaly\_b05\_gamma\_0.25}.
+\end{equation}
+
+This design separates the role of the coordinator: classification is learned from compact messages, while unknown detection is driven by a composite direct score that remains sensitive to uncertainty, anomaly shift, and message residuals.
+
 \section{Experimental Protocol}
-The first frozen protocol uses 5G-NIDD as the pilot dataset, transparent edge-monitor agents when physical device columns are absent, and leave-one-attack-family-out evaluation. The first unknown class is SYN Flood, with UDP Scan as a fallback. The initial token budgets are $k \in \{1,3,5\}$.
-\section{Baselines and Metrics}
-Baselines are centralized full-feature classification, local owner-agent-only classification, majority vote, logit-average communication, raw top-$k$ communication, and explanation-token communication. Metrics are known macro-F1, known balanced accuracy, unknown AUROC, unknown recall at threshold, known false-alarm rate, message bytes per flow, training time, and prediction time.
-\section{Immediate Next Step}
-The immediate next step is to run the schema audit and smoke-test pipeline on the actual 5G-NIDD \texttt{Encoded.csv} file, inspect the dropped columns, and freeze the first leakage-control table before reporting results.
-\bibliographystyle{IEEEtran}
+
+The current experiments use the real 5G-NIDD encoded CSV file with leave-one-attack-family-out evaluation. Each attack family is held out as unknown, while the remaining known attack families and benign traffic are used for known-class training and testing. The held-out families are HTTPFlood, ICMPFlood, SlowrateDoS, SYNFlood, SYNScan, TCPConnectScan, UDPFlood, and UDPScan.
+
+The reported metrics are known macro-F1, unknown AUROC, unknown recall at a validation-calibrated threshold, known false-alarm rate at that threshold, message bytes per flow, and runtime. The current result uses a single random state, so the next experiment is a stability sweep over random states $\{7,42,123\}$.
+
+\section{Results}
+
+\subsection{COS-24B vs COS-30B}
+
+Table~\ref{tab:summary} summarizes the all-holdout result for the 24-byte and 30-byte composite variants. The 30-byte variant adds one extra class-evidence item but provides negligible performance improvement while increasing runtime substantially. Therefore, \cosmethod{} is frozen as the main method.
+
+\begin{table}[h]
+\centering
+\caption{All-holdout summary for \framework{} variants on real 5G-NIDD.}
+\label{tab:summary}
+\begin{tabular}{lrrrrrr}
+\toprule
+Variant & Mean F1 & Min F1 & Mean AUROC & Min AUROC & Mean Recall & Bytes \\
+\midrule
+X-MAG-COS-24B & 0.9979 & 0.9970 & 0.9502 & 0.7899 & 0.8517 & 24 \\
+X-MAG-COS-30B & 0.9981 & 0.9973 & 0.9503 & 0.7899 & 0.8519 & 30 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Detailed COS-24B Results}
+
+Table~\ref{tab:detailed} gives the detailed \cosmethod{} leave-one-attack-family-out results. UDPFlood remains the hardest holdout, but the composite score substantially improves it compared with the earlier DH-24B open-set head.
+
+\begin{table}[h]
+\centering
+\caption{Detailed \cosmethod{} results across 5G-NIDD holdouts.}
+\label{tab:detailed}
+\begin{tabular}{lrrrrr}
+\toprule
+Held-out attack & Known F1 & Unknown AUROC & Unknown Recall & False Alarm & Bytes \\
+\midrule
+HTTPFlood & 0.9979 & 0.9878 & 0.9605 & 0.0511 & 24 \\
+ICMPFlood & 0.9986 & 0.9974 & 1.0000 & 0.0488 & 24 \\
+SlowrateDoS & 0.9975 & 0.8552 & 0.4315 & 0.0497 & 24 \\
+SYNFlood & 0.9970 & 0.9966 & 1.0000 & 0.0490 & 24 \\
+SYNScan & 0.9987 & 0.9954 & 0.9994 & 0.0506 & 24 \\
+TCPConnectScan & 0.9983 & 0.9934 & 1.0000 & 0.0504 & 24 \\
+UDPFlood & 0.9976 & 0.7899 & 0.4250 & 0.0495 & 24 \\
+UDPScan & 0.9978 & 0.9864 & 0.9973 & 0.0502 & 24 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablation: DH-24B vs COS-24B}
+
+The earlier dual-head method, \dhmethod{}, used the same 24-byte message but relied on coordinator uncertainty for open-set scoring. Table~\ref{tab:ablation} shows that replacing coordinator uncertainty with composite open-set scoring substantially improves the worst-case unknown behavior without increasing message size.
+
+\begin{table}[h]
+\centering
+\caption{Ablation summary: coordinator uncertainty vs composite open-set scoring.}
+\label{tab:ablation}
+\begin{tabular}{lrrrr}
+\toprule
+Method & Mean AUROC & Worst AUROC & Mean Recall & Worst Recall \\
+\midrule
+X-MAG-DH-24B & 0.9036 & 0.4893 & 0.7441 & 0.0133 \\
+X-MAG-COS-24B & 0.9502 & 0.7899 & 0.8517 & 0.4250 \\
+X-MAG-COS-30B & 0.9503 & 0.7899 & 0.8519 & 0.4269 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Interpretation}
+
+The main finding is that compact explanation-aware communication is viable, but open-set detection should not be delegated to the coordinator confidence alone. The UDPFlood failure case is especially important: with the same 24-byte message, \dhmethod{} produced unknown AUROC of 0.4893 and recall of 0.0133, while \cosmethod{} improved these to 0.7899 and 0.4250. This supports the design choice of a composite open-set head.
+
+The current result should be stated carefully. \framework{} does not solve open-set intrusion detection completely; rather, it materially improves worst-case zero-day behavior under a strict communication budget while preserving known-class detection.
+
+\section{Next Experiment: Seed-Stability Sweep}
+
+The next required validation is a small seed-stability sweep:
+
+\begin{equation}
+    \texttt{random\_state} \in \{7,42,123\}.
+\end{equation}
+
+The sweep should run \cosmethod{} only, across all eight 5G-NIDD holdouts, using the same 24-byte message and composite score. The output should report mean and standard deviation for known macro-F1, unknown AUROC, unknown recall, and false-alarm rate.
+
+\section{Expected Contributions}
+
+The paper is now organized around four contributions:
+
+\begin{enumerate}[leftmargin=*]
+    \item A compact multi-agent IDS message format that combines top-1 class evidence, top-1 explanation evidence, and local anomaly evidence in 24 bytes per flow.
+    \item A dual-head architecture separating known-attack classification from unknown-attack scoring.
+    \item A composite open-set score that improves worst-case unknown recall compared with coordinator uncertainty alone.
+    \item A real 5G-NIDD leave-one-attack-family-out evaluation protocol with communication-cost accounting.
+\end{enumerate}
+
+\section{Limitations}
+
+The current result is single-seed and uses transparent hash-based agents rather than a real deployment mapping. The local explanation token currently uses lightweight feature-importance contribution proxies rather than full SHAP/LIME. These are acceptable for the first empirical draft but must be explicitly reported. Future versions should add seed stability, noisy-agent robustness, physical agent mappings where available, and SHAP/LIME comparison.
+
+\section{Conclusion}
+
+This draft freezes \framework{} as the main method. The result supports a precise and defensible paper claim: compact explanation-aware multi-agent communication can preserve known-attack classification and substantially improve worst-case zero-day recall when paired with a composite open-set head. The next step is to run the seed-stability sweep and then integrate the final statistics into the manuscript.
+
 \begin{thebibliography}{9}
 \bibitem{lundberg2017shap} S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predictions,'' in \emph{NeurIPS}, 2017.
+\bibitem{ribeiro2016lime} M. T. Ribeiro, S. Singh, and C. Guestrin, ``Why should I trust you? Explaining the predictions of any classifier,'' in \emph{KDD}, 2016.
 \bibitem{breiman2001rf} L. Breiman, ``Random forests,'' \emph{Machine Learning}, 2001.
+\bibitem{5gnidd} Reference placeholder for the 5G-NIDD dataset paper and dataset page.
 \end{thebibliography}
+
 \end{document}
