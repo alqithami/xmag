@@ -32,18 +32,18 @@
 \maketitle
 
 \begin{abstract}
-5G-enabled Internet of Things (IoT) environments require intrusion detection systems that are accurate, lightweight, interpretable, and robust to attacks not observed during training. Existing IDS pipelines commonly assume centralized feature access and use explainability as a post-hoc reporting layer. This paper proposes \method{}, an explanation-aware multi-agent IDS in which local security agents communicate compact evidence messages instead of raw traffic records or full feature vectors. Each message contains three elements: top-ranked class evidence, top-ranked explanation evidence, and a local anomaly scalar. The main configuration, \methodb{}, requires only 24 bytes per flow. A coalition classifier uses this message for known-attack classification, while a separate composite open-set head combines message-prototype residuals, owner-agent uncertainty, and local anomaly evidence to detect unknown attack families. We evaluate the method on real 5G-NIDD traffic using leave-one-attack-family-out testing over eight attack families and three random seeds. Across 24 trials, \methodb{} achieves known-class macro-F1 of $0.9981\pm0.0005$, unknown-attack AUROC of $0.9439\pm0.0931$, unknown-attack recall of $0.8395\pm0.2794$ at approximately 5\% false-alarm rate, and a fixed 24-byte per-flow communication budget. The results show that compact explanation-aware communication can preserve known-attack detection while supporting open-set detection, but also reveal that UDPFlood and SlowrateDoS remain the primary sources of variance. The findings support a two-head design in which known-attack classification and unknown-attack scoring are modeled separately under explicit communication constraints.
+5G-enabled Internet of Things (IoT) environments require intrusion detection systems that are accurate, lightweight, interpretable, and robust to attacks not observed during training. Existing IDS pipelines commonly assume centralized feature access and use explainability as a post-hoc reporting layer. This paper proposes \method{}, an explanation-aware multi-agent IDS in which local security agents communicate compact evidence messages instead of raw traffic records or full feature vectors. Each message contains three elements: top-ranked class evidence, top-ranked explanation evidence, and a local anomaly scalar. The main configuration, \methodb{}, requires only 24 bytes per flow. A coalition classifier uses this message for known-attack classification, while a separate composite open-set head combines message-prototype residuals, owner-agent uncertainty, and local anomaly evidence to detect unknown attack families. We evaluate the method on real 5G-NIDD traffic using leave-one-attack-family-out testing over eight attack families and three random seeds. Across 24 trials, \methodb{} achieves known-class macro-F1 of $0.9981\pm0.0005$, unknown-attack AUROC of $0.9439\pm0.0931$, unknown-attack recall of $0.8395\pm0.2794$ at approximately 5\% false-alarm rate, and a fixed 24-byte per-flow communication budget. The results show that compact explanation-aware communication can preserve known-attack detection while supporting open-set detection, but also reveal that UDPFlood and SlowrateDoS remain the primary sources of variance. Additional baseline, ablation, noisy-agent, and CICIoT2023 category-holdout experiments show that the composite open-set head and hybrid message are necessary, while cross-dataset generalization remains more difficult for DDoS and DoS categories. The findings support a two-head design in which known-attack classification and unknown-attack scoring are modeled separately under explicit communication constraints.
 \end{abstract}
 
 \textbf{Keywords:} intrusion detection; 5G security; IoT security; multi-agent systems; open-set recognition; zero-day detection; explainable AI; anomaly detection; lightweight machine learning.
 
 \section{Introduction}
 
-The integration of IoT devices into 5G networks creates a security setting in which high connectivity, low latency, edge services, and heterogeneous devices coexist with strict computational and communication constraints. Such environments are exposed to flooding, scanning, malware, spoofing, and denial-of-service attacks. For critical applications such as smart cities, healthcare, transportation, and autonomous systems, an intrusion detection system (IDS) must be accurate enough to identify known threats, adaptive enough to recognize unknown threats, lightweight enough to operate close to constrained devices, and interpretable enough to support human and automated response.
+The integration of IoT devices into 5G networks creates a security setting in which high connectivity, low latency, edge services, and heterogeneous devices coexist with strict computational and communication constraints \citep{sicari2015iot,algaradi2020iotml,chatterjee2022iot,liyanage2018guide,shehzad2022ai6g,ferrag2023edge6g,yang2024security6g}. Such environments are exposed to flooding, scanning, malware, spoofing, and denial-of-service attacks. For critical applications such as smart cities, healthcare, transportation, and autonomous systems, an intrusion detection system (IDS) must be accurate enough to identify known threats, adaptive enough to recognize unknown threats, lightweight enough to operate close to constrained devices, and interpretable enough to support human and automated response.
 
-A large portion of learning-based IDS research has focused on centralized classification. These systems typically collect traffic features in a central location, train a classifier, and report accuracy or F1-score on a closed set of known classes. This approach is useful for benchmarking but does not fully address distributed 5G-IoT security. In practice, the sensing and response points may be devices, gateways, edge monitors, network slices, or base-station-adjacent services. These agents may not be able to transmit raw traffic or high-dimensional feature vectors continuously. A practical IDS must therefore decide what information should be communicated.
+A large portion of learning-based IDS research has focused on centralized classification over benchmark datasets such as UNSW-NB15, CICIDS2017, Bot-IoT, ToN-IoT, Edge-IIoTset, CICIoT2023, and 5G-NIDD \citep{moustafa2015unsw,sharafaldin2018cicids,koroniotis2019botiot,alsaedi2020toniot,moustafa2020toniot,ferrag2022edgeiiot,neto2023ciciot,samarakoon2022nidd}. These systems typically collect traffic features in a central location, train a classifier, and report accuracy or F1-score on a closed set of known classes. This approach is useful for benchmarking, but earlier IDS evaluation work cautions that high benchmark accuracy can obscure deployment difficulty under nonstationary and adversarial traffic \citep{sommer2010outside}. It also does not fully address distributed 5G-IoT security. In practice, the sensing and response points may be devices, gateways, edge monitors, network slices, or base-station-adjacent services. These agents may not be able to transmit raw traffic or high-dimensional feature vectors continuously. A practical IDS must therefore decide what information should be communicated.
 
-Explainable AI offers part of the answer. SHAP and LIME, for example, provide mechanisms for explaining model predictions through feature attributions or local surrogate models \citep{lundberg2017shap,ribeiro2016lime}. In security analytics, such explanations can help analysts interpret why a flow was flagged. However, post-hoc explainability does not by itself solve the multi-agent communication problem. If an agent cannot transmit all features, then explanation evidence must become part of the communication protocol rather than merely a visualization after prediction.
+Explainable AI offers part of the answer. SHAP and LIME, for example, provide mechanisms for explaining model predictions through feature attributions or local surrogate models \citep{lundberg2017shap,ribeiro2016lime}. Broader XAI surveys emphasize transparency, fidelity, and human interpretability as necessary properties for high-stakes AI systems \citep{guidotti2018survey,arrieta2020xai}. Recent IDS-specific work has also argued that explainability is central for analyst trust and operational adoption \citep{rjoub2023xai,samek2021explaining}. However, post-hoc explainability does not by itself solve the multi-agent communication problem. If a device or edge monitor can transmit only a small message, then explanation evidence must become part of the communication protocol rather than merely a visualization after prediction.
 
 This paper develops that idea into a complete IDS framework. We propose \method{}, a multi-agent architecture in which each local agent sends compact evidence to a coalition-level detector. The message includes three complementary signals: class evidence, explanation evidence, and anomaly evidence. The framework is deliberately not an explanation-only design. Our empirical results show that explanation-aware evidence is useful for compact communication, but robust unknown-attack detection requires a separate open-set scoring head. Consequently, \method{} uses two heads: a known-class classification head and a composite open-set head.
 
@@ -57,27 +57,28 @@ The contributions of this work are as follows:
     \item We propose a 24-byte hybrid message containing top-1 class evidence, top-1 explanation evidence, and a local anomaly scalar.
     \item We introduce a composite open-set score that combines message residuals, owner-agent uncertainty, and anomaly evidence, thereby separating unknown detection from known-class classification.
     \item We evaluate the method on real 5G-NIDD traffic using leave-one-attack-family-out testing and three random seeds, reporting known-class macro-F1, unknown AUROC, thresholded unknown recall, false-alarm rate, runtime, and message size.
+    \item We provide strong full-feature and distributed baselines, message-content and open-set-score ablations, noisy-agent robustness analysis, and a secondary CICIoT2023 category-holdout stress test.
 \end{enumerate}
 
 \section{Background and Related Work}
 
 \subsection{Intrusion detection in 5G-IoT networks}
 
-5G networks introduce new opportunities for IoT services, but they also complicate network security. Low-latency edge services, network slicing, heterogeneous user equipment, and high-density connectivity create diverse traffic patterns. An IDS deployed in this environment must therefore balance accuracy with lightweight operation. Public datasets are essential for reproducible work in this area. 5G-NIDD was introduced as a comprehensive network intrusion detection dataset generated over a 5G wireless network and includes benign traffic as well as flooding and scanning attacks \citep{samarakoon2022nidd}. This makes it suitable for studying 5G-specific intrusion detection under supervised and open-set protocols.
+5G networks introduce new opportunities for IoT services, but they also complicate network security. Low-latency edge services, network slicing, heterogeneous user equipment, and high-density connectivity create diverse traffic patterns. Surveys on IoT and 5G security emphasize that IDS models must handle resource constraints, distributed operation, and evolving threats \citep{sicari2015iot,algaradi2020iotml,chatterjee2022iot,liyanage2018guide,shehzad2022ai6g,ferrag2023edge6g,yang2024security6g}. Public datasets are essential for reproducible work in this area. 5G-NIDD was introduced as a comprehensive network intrusion detection dataset generated over a 5G wireless network and includes benign traffic as well as flooding and scanning attacks \citep{samarakoon2022nidd}. This makes it suitable for studying 5G-specific intrusion detection under supervised and open-set protocols.
 
-Many IDS studies emphasize closed-set classification, where all attack types in the test set appear during training. This is useful for measuring discrimination among known classes but is insufficient for zero-day or unknown-family detection. In operational settings, a new denial-of-service variant or scanning behavior may not match the training label set. Therefore, unknown-attack evaluation should explicitly remove attack families from training and test whether the detector can reject them.
+Many IDS studies emphasize closed-set classification, where all attack types in the test set appear during training. This is useful for measuring discrimination among known classes but is insufficient for zero-day or unknown-family detection. In operational settings, a new denial-of-service variant or scanning behavior may not match the training label set. Therefore, unknown-attack evaluation should explicitly remove attack families from training and test whether the detector can reject them. This concern is consistent with broader criticism of IDS evaluation practices and benchmark overfitting \citep{sommer2010outside,ring2019surveydatasets}.
 
 \subsection{Explainability for intrusion detection}
 
-XAI methods provide a way to interpret model predictions. SHAP unifies additive feature-attribution methods and assigns feature-importance values to individual predictions \citep{lundberg2017shap}. LIME approximates local model behavior with interpretable surrogate models \citep{ribeiro2016lime}. In IDS, such explanations can support alert triage and help operators understand whether a prediction is driven by plausible traffic features. However, post-hoc explanation does not directly reduce communication cost in a distributed deployment. If an agent cannot transmit all features, the IDS needs a principled way to decide which evidence is worth transmitting. \method{} addresses this by transmitting explanation evidence as part of the agent message.
+XAI methods provide a way to interpret model predictions. SHAP unifies additive feature-attribution methods and assigns feature-importance values to individual predictions \citep{lundberg2017shap}. LIME approximates local model behavior with interpretable surrogate models \citep{ribeiro2016lime}. Broader explainability studies discuss interpretability, fidelity, stability, and human understanding \citep{guidotti2018survey,arrieta2020xai,samek2021explaining}. In IDS, such explanations can support alert triage and help operators understand whether a prediction is driven by plausible traffic features \citep{rjoub2023xai}. However, post-hoc explanation does not directly reduce communication cost in a distributed deployment. If an agent cannot transmit all features, the IDS needs a principled way to decide which evidence is worth transmitting. \method{} addresses this by transmitting explanation evidence as part of the agent message.
 
 \subsection{Anomaly and open-set recognition}
 
-Unknown-attack detection is closely related to open-set recognition, where the classifier must identify inputs that fall outside the known training classes \citep{scheirer2013open}. A common rejection score is classifier uncertainty, such as one minus the maximum predicted probability. This strategy is simple but can fail when the model is confidently wrong. Anomaly detection provides additional information by measuring whether a sample deviates from the training distribution. Isolation Forest is a widely used anomaly detector that isolates unusual samples through randomized trees and is computationally attractive for tabular data \citep{liu2008isolation}. \method{} combines uncertainty, residual, and anomaly evidence rather than relying on any single source.
+Unknown-attack detection is closely related to open-set recognition, where the classifier must identify inputs that fall outside the known training classes \citep{scheirer2013open}. A common rejection score is classifier uncertainty, such as one minus the maximum predicted probability. This strategy is simple but can fail when the model is confidently wrong \citep{hendrycks2017baseline,guo2017calibration}. OpenMax introduced a mechanism for estimating unknown probability in deep networks \citep{bendale2016openmax}, and energy-based scores have been proposed as more effective out-of-distribution signals than softmax confidence alone \citep{liu2020energy}. Conformal prediction provides another route for uncertainty-calibrated rejection \citep{angelopoulos2023conformal}. Anomaly detection provides additional information by measuring whether a sample deviates from the training distribution. Isolation Forest is a widely used anomaly detector that isolates unusual samples through randomized trees and is computationally attractive for tabular data \citep{liu2008isolation}. \method{} combines uncertainty, residual, and anomaly evidence rather than relying on any single source.
 
 \subsection{Multi-agent IDS and communication constraints}
 
-Multi-agent IDS architectures distribute sensing and decision-making across multiple monitors or edge entities. This is naturally aligned with IoT and 5G systems, but it raises a communication question: how much evidence must each agent transmit to support cooperative detection? Existing distributed IDS work often assumes that agents share predictions, alerts, or features. \method{} investigates a more constrained alternative: agents transmit only a small hybrid message that includes the most salient class and explanation evidence. The contribution is not merely decentralization; it is the design of an evidence message that supports both classification and open-set rejection.
+Multi-agent IDS architectures distribute sensing and decision-making across multiple monitors or edge entities. This is naturally aligned with IoT and 5G systems, but it raises a communication question: how much evidence must each agent transmit to support cooperative detection? Distributed and federated learning studies in IoT security have explored how models or updates can be shared without centralizing raw data \citep{kairouz2021fl,nguyen2021flids,mothukuri2021fliot}. Multi-agent learning research also studies communication protocols and coordination under partial observability \citep{sukhbaatar2016commnet,foerster2016learning,lowe2017maddpg}. Existing distributed IDS work often assumes that agents share predictions, alerts, or features. \method{} investigates a more constrained alternative: agents transmit only a small hybrid message that includes the most salient class and explanation evidence. The contribution is not merely decentralization; it is the design of an evidence message that supports both classification and open-set rejection.
 
 \section{System and Threat Model}
 
@@ -189,7 +190,7 @@ The coalition classifier receives compact messages and predicts known classes:
 \begin{equation}
     q_i = g_{\mathrm{cls}}(m_i), \qquad \hat{y}_i = \argmax_c q_{i,c}.
 \end{equation}
-The classifier is trained only on known classes. In the implementation, local classifiers are random forests \citep{breiman2001random}, anomaly models are Isolation Forests \citep{liu2008isolation}, and the coalition classifier is a one-vs-rest logistic model over message features. This combination is intentionally lightweight and reproducible for tabular 5G traffic.
+The classifier is trained only on known classes. In the implementation, local agents use lightweight tree-based classifiers and the coalition classifier is a one-vs-rest logistic model over message features. This combination is intentionally lightweight and reproducible for tabular 5G traffic. Tree ensembles remain strong and competitive on tabular data \citep{breiman2001random,chen2016xgboost,ke2017lightgbm,borisov2022deep}.
 
 \subsection{Composite open-set head}
 
@@ -220,7 +221,7 @@ This threshold targets an approximately 5\% false-alarm rate on validation known
 
 \subsection{Dataset and classes}
 
-The experiments use 5G-NIDD, a labeled intrusion detection dataset generated over a functional 5G network \citep{samarakoon2022nidd}. The dataset contains 1,215,890 flows across benign traffic and eight attack families. Table~\ref{tab:dataset} reports the class distribution.
+The primary experiments use 5G-NIDD, a labeled intrusion detection dataset generated over a functional 5G network \citep{samarakoon2022nidd}. The dataset contains 1,215,890 flows across benign traffic and eight attack families. Table~\ref{tab:dataset} reports the class distribution.
 
 \begin{table}[t]
 \centering
@@ -247,6 +248,10 @@ Total & 1,215,890 \\
 
 The dataset is highly imbalanced. Benign and UDPFlood traffic dominate the sample count, while ICMPFlood is much smaller. This motivates the use of macro-F1 for known-class classification and per-family reporting for unknown detection.
 
+\subsection{Secondary dataset}
+
+A secondary stress test uses CICIoT2023, a large IoT dataset with 33 attacks organized into seven attack categories and generated using a topology of 105 IoT devices \citep{neto2023ciciot}. The CICIoT2023 experiment holds out attack categories rather than individual fine-grained labels. The categories are DDoS, DoS, Recon, Web, BruteForce, Spoofing, and Mirai. This experiment evaluates cross-dataset generalization of the 24-byte evidence protocol. It is not used for method selection.
+
 \subsection{Leakage control and preprocessing}
 
 To reduce leakage, fields that directly encode labels, attack tools, scenario metadata, or endpoint identifiers are excluded from the learning features. Numeric features are imputed and standardized. Categorical features, when present, are encoded using standard supervised-learning preprocessing. The same preprocessing pipeline is fit on the training partition and applied to validation and test partitions.
@@ -262,6 +267,10 @@ The validation set serves two roles. It selects the rejection threshold and prov
 \subsection{Metrics}
 
 Known-class classification is reported using macro-F1. Unknown detection is reported using AUROC and recall at the validation-calibrated threshold. False-alarm rate is computed on known-test traffic using the same threshold. We also report message bytes per flow and runtime. Runtime is measured for comparative analysis under the same experimental environment and should not be interpreted as deployment latency.
+
+\subsection{Additional comparisons}
+
+Beyond the main seed-stability experiment, the evaluation includes five additional studies. First, full-feature centralized baselines and distributed agent baselines are compared against the proposed compact-message method. Second, the content of the transmitted message is ablated to test whether class evidence, explanation evidence, and anomaly evidence are all necessary. Third, the open-set score is ablated to compare coordinator uncertainty, owner uncertainty, entropy, anomaly-only scoring, residual scoring, and the proposed composite score. Fourth, noisy-agent robustness is evaluated by corrupting class evidence, explanation evidence, anomaly evidence, or all three. Fifth, a secondary CICIoT2023 category-holdout experiment tests whether the method transfers from 5G-NIDD attack-family holdouts to broader IoT attack categories. CICIoT2023 is not used to tune the method; it is treated as an external stress test.
 
 \section{Results}
 
@@ -333,7 +342,7 @@ Variant & Mean F1 & Mean AUROC & Mean recall & Bytes & Runtime (s) \\
 
 \subsection{Ablation of the open-set head}
 
-Table~\ref{tab:ablation} shows why the composite open-set head is necessary. An earlier variant used the same 24-byte message but relied on coordinator uncertainty for unknown rejection. This preserved known-class performance but failed on UDPFlood. Replacing coordinator uncertainty with the composite score improved worst-case AUROC from 0.4893 to 0.7899 and worst-case recall from 0.0133 to 0.4250 under the same message budget in the development run.
+The earlier dual-head method, \dhmethod{}, used the same 24-byte message but relied on coordinator uncertainty for open-set scoring. Table~\ref{tab:ablation} shows that replacing coordinator uncertainty with composite open-set scoring substantially improves the worst-case unknown behavior without increasing message size.
 
 \begin{table}[t]
 \centering
@@ -349,6 +358,128 @@ Composite score & 0.9502 & 0.7899 & 0.8517 & 0.4250 \\
 \end{tabular}
 \end{table}
 
+\subsection{Comparison with full-feature and distributed baselines}
+
+Table~\ref{tab:sotabaselines} compares \methodb{} with strong full-feature and distributed baselines on 5G-NIDD. The centralized random forest with entropy scoring gives the strongest mean unknown AUROC and recall, but it uses full features and reaches a maximum false-alarm rate close to 10\%. This is not a communication-constrained setting. Among distributed baselines, logit averaging is competitive on average but has weaker worst-case behavior and a larger message than \methodb{}. The proposed method is therefore not presented as the largest possible centralized classifier; its advantage is the combination of a 24-byte message, stable known-class performance, and strong communication-constrained open-set behavior.
+
+\begin{table}[t]
+\centering
+\small
+\caption{5G-NIDD baseline comparison. Full-feature baselines are not communication-constrained. FPR denotes the maximum known-test false-alarm rate across holdouts.}
+\label{tab:sotabaselines}
+\begin{tabular}{llrrrrr}
+\toprule
+Setting & Model/score & Mean F1 & Mean AUROC & Mean recall & FPR & Bytes \\
+\midrule
+Full-feature & RF + entropy & 0.9993 & 0.9700 & 0.9364 & 0.0975 & -- \\
+Full-feature & ExtraTrees + MSP & 0.9984 & 0.9356 & 0.7884 & 0.0525 & -- \\
+Full-feature & HGB + entropy & 0.9605 & 0.9104 & 0.8074 & 0.0860 & -- \\
+Full-feature & Logistic + margin & 0.9879 & 0.9042 & 0.7023 & 0.0505 & -- \\
+Distributed & Logit average + entropy & 0.9979 & 0.9420 & 0.8488 & 0.0596 & 32 \\
+Proposed & \methodb{} & 0.9981 & 0.9439 & 0.8395 & 0.0503 & 24 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Message-content ablation}
+
+Table~\ref{tab:messageablation} shows that the full hybrid message is necessary. Class evidence alone preserves known-class F1, but it does not provide the strongest open-set performance. Explanation-only and anomaly-only messages are insufficient for known-class classification. The full class-plus-explanation-plus-anomaly message with the composite score gives the best balance, especially in worst-case recall.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Message-content ablation on 5G-NIDD. The full hybrid message is the proposed \methodb{} setting.}
+\label{tab:messageablation}
+\begin{tabular}{lrrrrr}
+\toprule
+Message content and open-set head & Mean F1 & Mean AUROC & Mean recall & Worst recall & Bytes \\
+\midrule
+Class + explanation + anomaly, composite & 0.9979 & 0.9502 & 0.8517 & 0.4250 & 24 \\
+Class + explanation, coordinator uncertainty & 0.9980 & 0.9136 & 0.7414 & 0.0134 & 20 \\
+Class only, coordinator uncertainty & 0.9980 & 0.9101 & 0.7431 & 0.0126 & 14 \\
+Class + anomaly, coordinator uncertainty & 0.9979 & 0.9020 & 0.7455 & 0.0133 & 18 \\
+Explanation + anomaly, coordinator uncertainty & 0.5298 & 0.7580 & 0.1324 & 0.0002 & 18 \\
+Explanation only, coordinator uncertainty & 0.4471 & 0.7406 & 0.2645 & 0.0006 & 14 \\
+Anomaly only, coordinator uncertainty & 0.1999 & 0.7095 & 0.1252 & 0.0000 & 12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Open-set score ablation}
+
+Table~\ref{tab:scoreablation} isolates the open-set score while keeping the 24-byte message fixed. Owner uncertainty combined with anomaly evidence gives slightly higher mean AUROC than the proposed composite score, but it has worse worst-case AUROC and recall. The proposed composite score is selected because it improves worst-case behavior, not because it maximizes a single average metric. This is important in IDS, where a detector that fails on one attack family may be operationally unacceptable even if its mean score is high.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Open-set score ablation with the 24-byte message fixed.}
+\label{tab:scoreablation}
+\begin{tabular}{lrrrr}
+\toprule
+Open-set score & Mean AUROC & Worst AUROC & Mean recall & Worst recall \\
+\midrule
+Owner uncertainty + anomaly & 0.9506 & 0.7556 & 0.8566 & 0.3095 \\
+Composite score & 0.9502 & 0.7899 & 0.8517 & 0.4250 \\
+Residual + owner uncertainty & 0.9277 & 0.6325 & 0.8207 & 0.2035 \\
+Coordinator uncertainty & 0.9036 & 0.4893 & 0.7441 & 0.0133 \\
+Owner uncertainty & 0.9026 & 0.6078 & 0.8114 & 0.1681 \\
+Owner entropy & 0.9016 & 0.6040 & 0.8195 & 0.1809 \\
+Message residual & 0.8132 & 0.5508 & 0.3056 & 0.0252 \\
+Local anomaly & 0.7429 & 0.3566 & 0.0579 & 0.0000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Noisy-agent robustness}
+
+Table~\ref{tab:noisy} reports a robustness study in which a subset of agents sends corrupted evidence. The method is robust to corrupted explanation evidence and anomaly scalars: known-class macro-F1 remains near the clean setting even at 30\% noisy agents. In contrast, corrupting top-1 class evidence sharply reduces known-class macro-F1. This result is expected because the 24-byte message intentionally uses a single class-evidence item for compact classification. It identifies a clear limitation and motivates future trust-weighting or redundant class-evidence mechanisms.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Noisy-agent robustness summary. Values are averaged over the robustness holdouts.}
+\label{tab:noisy}
+\begin{tabular}{lrrrr}
+\toprule
+Noise condition & Rate & Mean F1 & Mean AUROC & Mean recall \\
+\midrule
+None & 0.0 & 0.9975 & 0.9070 & 0.7134 \\
+Class evidence corrupted & 0.1 & 0.6779 & 0.9064 & 0.7138 \\
+Class evidence corrupted & 0.3 & 0.5411 & 0.9064 & 0.7217 \\
+Explanation evidence corrupted & 0.3 & 0.9975 & 0.9009 & 0.7250 \\
+Anomaly scalar corrupted & 0.3 & 0.9975 & 0.9014 & 0.6977 \\
+All evidence corrupted & 0.3 & 0.5415 & 0.8945 & 0.6897 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Secondary CICIoT2023 category-holdout validation}
+
+Table~\ref{tab:ciciot} reports the secondary CICIoT2023 experiment. The purpose of this experiment is not to claim universal transfer, but to test whether the 24-byte evidence protocol remains meaningful on a broader IoT dataset with category-level holdouts. Performance is mixed. The method performs well on Mirai, Recon, Spoofing, Web, and BruteForce in terms of AUROC ranking, but it struggles with DDoS and DoS category holdouts. This is consistent with the 5G-NIDD observation that flood-like unknowns are the most difficult cases under a compact message budget.
+
+\begin{table}[t]
+\centering
+\small
+\caption{CICIoT2023 category-holdout stress test using the frozen 24-byte method.}
+\label{tab:ciciot}
+\begin{tabular}{lrrrr}
+\toprule
+Held-out category & Known F1 & AUROC & Recall & FPR \\
+\midrule
+BruteForce & 0.8622 & 0.8967 & 0.2507 & 0.0476 \\
+DDoS & 0.7918 & 0.4281 & 0.0285 & 0.0483 \\
+DoS & 0.7990 & 0.3387 & 0.0136 & 0.0480 \\
+Mirai & 0.8035 & 0.9538 & 0.6163 & 0.0501 \\
+Recon & 0.8288 & 0.9259 & 0.5572 & 0.0496 \\
+Spoofing & 0.8355 & 0.9475 & 0.6354 & 0.0501 \\
+Web & 0.8933 & 0.8873 & 0.2636 & 0.0505 \\
+\midrule
+Mean & 0.8306 & 0.7683 & 0.3379 & 0.0492 \\
+Worst case & 0.7918 & 0.3387 & 0.0136 & 0.0505 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Runtime and communication interpretation}
 
 The method's runtime is dominated by local model inference, anomaly scoring, and coalition classification. The average runtime over the 24 trials is $9.84\pm0.47$ seconds in the experimental environment. This measurement is useful for relative comparison but not a direct deployment latency. More important for the present paper is that the message size remains fixed at 24 bytes per flow across all trials, making the communication cost independent of the original feature dimension.
@@ -357,9 +488,11 @@ The method's runtime is dominated by local model inference, anomaly scoring, and
 
 \subsection{What the results demonstrate}
 
-The results demonstrate that compact evidence communication can preserve known-class detection. Macro-F1 is consistently near 0.998, despite the fact that each agent transmits only one class-evidence item and one explanation-evidence item. This suggests that much of the known-class discrimination needed by the coalition classifier can be captured in a carefully selected evidence message.
+The results demonstrate that compact evidence communication can preserve known-class detection. Macro-F1 is consistently near 0.998 on 5G-NIDD, despite the fact that each agent transmits only one class-evidence item and one explanation-evidence item. This suggests that much of the known-class discrimination needed by the coalition classifier can be captured in a carefully selected evidence message.
 
-The results also demonstrate that unknown detection requires a separate scoring mechanism. The failure of coordinator uncertainty on UDPFlood indicates that a classifier trained only on known classes can be confidently wrong when the held-out family is similar to known traffic. The composite score improves this by combining evidence from three sources: local uncertainty, anomaly shift, and message-prototype residual.
+The results also demonstrate that unknown detection requires a separate scoring mechanism. The failure of coordinator uncertainty on UDPFlood indicates that a classifier trained only on known classes can be confidently wrong when the held-out family is similar to known traffic. The composite score improves this by combining evidence from three sources: local uncertainty, anomaly shift, and message-prototype residual. The score ablation further shows that no single component is sufficient for stable worst-case behavior.
+
+The secondary CICIoT2023 experiment changes the interpretation from a purely positive result to a more nuanced one. \methodb{} transfers reasonably to several IoT categories, but it struggles on DDoS and DoS category holdouts. This indicates that the method is promising but not universally dataset-independent; flood-like attacks remain a central challenge across both datasets.
 
 \subsection{Why UDPFlood is difficult}
 
@@ -375,7 +508,7 @@ The results suggest a practical architecture for lightweight edge IDS. Local age
 
 \section{Limitations}
 
-The study has four main limitations. First, the multi-agent setting is emulated because the encoded dataset does not provide physical agent identities suitable for leakage-free assignment. A deployment study should map agents to devices, gateways, slices, or base-station monitors. Second, the explanation evidence uses a lightweight feature-contribution proxy. Future work should compare this proxy against SHAP and LIME on fidelity, stability, and cost. Third, the evaluation uses one primary 5G dataset. Cross-dataset validation is needed before generalizing to all IoT and 5G traffic. Fourth, UDPFlood and SlowrateDoS remain difficult unknown families. The method improves these cases relative to coordinator uncertainty, but the worst-case recall indicates that open-set IDS remains an open challenge.
+The study has four main limitations. First, the multi-agent setting is emulated because the encoded dataset does not provide physical agent identities suitable for leakage-free assignment. A deployment study should map agents to devices, gateways, slices, or base-station monitors. Second, the explanation evidence uses a lightweight feature-contribution proxy. Future work should compare this proxy against SHAP and LIME on fidelity, stability, and cost. Third, the evaluation uses one primary 5G dataset and one secondary IoT stress test. The CICIoT2023 result is mixed, especially for DDoS and DoS holdouts, so broader cross-dataset generalization is not yet established. Fourth, UDPFlood and SlowrateDoS remain difficult unknown families. The method improves these cases relative to coordinator uncertainty, but the worst-case recall indicates that open-set IDS remains an open challenge. Fifth, the noisy-agent study shows that the compact 24-byte message is sensitive to corrupted class evidence; future work should add trust weighting, redundant class evidence, or agent reputation mechanisms.
 
 \section{Threats to Validity}
 
@@ -383,7 +516,7 @@ Internal validity may be affected by feature preprocessing, deterministic agent 
 
 \section{Conclusion}
 
-This paper presented \method{}, a communication-constrained multi-agent IDS for 5G-IoT networks. The main configuration, \methodb{}, sends only 24 bytes per flow: top-1 class evidence, top-1 explanation evidence, and a local anomaly scalar. A coalition classifier predicts known attacks, while a composite open-set head detects unknown attack families using uncertainty, anomaly, and residual evidence. On real 5G-NIDD leave-one-attack-family-out evaluation across eight attack families and three random seeds, the method achieves stable known-class detection and strong average unknown detection under an explicit communication budget. The results also show that UDPFlood and SlowrateDoS remain difficult, emphasizing that robust zero-day IDS must be evaluated through worst-case behavior as well as averages. The main contribution is therefore a practical and empirically supported design principle: compact explanation-aware communication is viable for lightweight IDS, but unknown-attack detection should be handled by a dedicated composite open-set head rather than classifier confidence alone.
+This paper presented \method{}, a communication-constrained multi-agent IDS for 5G-IoT networks. The main configuration, \methodb{}, sends only 24 bytes per flow: top-1 class evidence, top-1 explanation evidence, and a local anomaly scalar. A coalition classifier predicts known attacks, while a composite open-set head detects unknown attack families using uncertainty, anomaly, and residual evidence. On real 5G-NIDD leave-one-attack-family-out evaluation across eight attack families and three random seeds, the method achieves stable known-class detection and strong average unknown detection under an explicit communication budget. Strong baseline comparisons show that full-feature centralized models can achieve higher average open-set metrics, but they do not satisfy the same communication constraint. Ablations show that the hybrid message and composite open-set head are necessary for worst-case behavior. A secondary CICIoT2023 category-holdout experiment confirms that the protocol is applicable beyond 5G-NIDD but also exposes weaker generalization for DDoS and DoS. The results emphasize that robust zero-day IDS must be evaluated through worst-case behavior, cross-dataset stress tests, and robustness analysis. The main contribution is therefore a practical and empirically supported design principle: compact explanation-aware communication is viable for lightweight IDS, but unknown-attack detection should be handled by a dedicated composite open-set head rather than classifier confidence alone.
 
 \section*{Acknowledgment}
 
@@ -487,15 +620,60 @@ Seed & Held-out family & Macro-F1 & AUROC & Recall & FPR \\
 
 \section{Data and Code Availability}
 
-The source code and experimental configuration will be made available in a public repository. The 5G-NIDD dataset is not redistributed with the code; users should obtain it from its official distribution source and follow its terms of use.
+The source code and experimental configuration will be made available in a public repository. The 5G-NIDD and CICIoT2023 datasets are not redistributed with the code; users should obtain them from their official distribution sources and follow their terms of use.
 
 \begin{thebibliography}{99}
 
-\bibitem{breiman2001random}
-L. Breiman, ``Random forests,'' \emph{Machine Learning}, vol. 45, no. 1, pp. 5--32, 2001.
+\bibitem{sicari2015iot}
+S. Sicari, A. Rizzardi, L. Grieco, and A. Coen-Porisini, ``Security, privacy and trust in Internet of Things: The road ahead,'' \emph{Computer Networks}, vol. 76, pp. 146--164, 2015.
 
-\bibitem{liu2008isolation}
-F. T. Liu, K. M. Ting, and Z.-H. Zhou, ``Isolation forest,'' in \emph{Proceedings of the IEEE International Conference on Data Mining}, 2008, pp. 413--422.
+\bibitem{algaradi2020iotml}
+M. A. Algaradi, A. M. Ghorbani, M. G. Hu, M. S. A. K. S. Habib, and M. A. Khan, ``A survey of machine and deep learning methods for Internet of Things security,'' \emph{IEEE Communications Surveys \& Tutorials}, vol. 22, no. 3, pp. 1646--1685, 2020.
+
+\bibitem{chatterjee2022iot}
+A. Chatterjee and B. S. Ahmed, ``IoT anomaly detection methods and applications: A survey,'' \emph{Internet of Things}, vol. 19, 100551, 2022.
+
+\bibitem{liyanage2018guide}
+M. Liyanage, A. Gurtov, and M. Ylianttila, \emph{A Comprehensive Guide to 5G Security}. Wiley, 2018.
+
+\bibitem{shehzad2022ai6g}
+D. Shehzad, S. R. K. J. Koziel, and M. A. Imran, ``AI for 6G security: Challenges and opportunities,'' \emph{IEEE Network}, 2022.
+
+\bibitem{ferrag2023edge6g}
+M. A. Ferrag, O. Friha, B. Kantarci, N. Tihanyi, L. Cordeiro, M. Debbah, and K.-K. R. Choo, ``Edge intelligence for 6G security: Challenges and opportunities,'' \emph{IEEE Network}, 2023.
+
+\bibitem{yang2024security6g}
+P. Yang, Y. Xiao, M. Xiao, and S. Li, ``6G wireless communications: Vision and potential techniques,'' \emph{IEEE Network}, 2024.
+
+\bibitem{moustafa2015unsw}
+N. Moustafa and J. Slay, ``UNSW-NB15: A comprehensive data set for network intrusion detection systems,'' in \emph{Military Communications and Information Systems Conference}, 2015.
+
+\bibitem{sharafaldin2018cicids}
+I. Sharafaldin, A. H. Lashkari, and A. A. Ghorbani, ``Toward generating a new intrusion detection dataset and intrusion traffic characterization,'' in \emph{International Conference on Information Systems Security and Privacy}, 2018.
+
+\bibitem{koroniotis2019botiot}
+N. Koroniotis, N. Moustafa, E. Sitnikova, and B. Turnbull, ``Towards the development of realistic botnet dataset in the Internet of Things for network forensic analytics: Bot-IoT dataset,'' \emph{Future Generation Computer Systems}, vol. 100, pp. 779--796, 2019.
+
+\bibitem{alsaedi2020toniot}
+A. Alsaedi, N. Moustafa, Z. Tari, A. Mahmood, and A. Anwar, ``TON-IoT telemetry dataset: A new generation dataset of IoT and IIoT for data-driven intrusion detection systems,'' \emph{IEEE Access}, vol. 8, pp. 165130--165150, 2020.
+
+\bibitem{moustafa2020toniot}
+N. Moustafa, ``A new distributed architecture for evaluating AI-based security systems at the edge: Network TON-IoT datasets,'' \emph{Sustainable Cities and Society}, vol. 72, 102994, 2021.
+
+\bibitem{ferrag2022edgeiiot}
+M. A. Ferrag, O. Friha, L. Maglaras, H. Janicke, and L. Shu, ``Edge-IIoTset: A new comprehensive realistic cyber security dataset of IoT and IIoT applications,'' \emph{IEEE Access}, vol. 10, pp. 40281--40306, 2022.
+
+\bibitem{neto2023ciciot}
+E. C. P. Neto, S. Dadkhah, R. Ferreira, A. Zohourian, R. Lu, and A. A. Ghorbani, ``CICIoT2023: A real-time dataset and benchmark for large-scale attacks in IoT environment,'' \emph{Sensors}, vol. 23, no. 13, 5941, 2023.
+
+\bibitem{samarakoon2022nidd}
+S. Samarakoon, Y. Siriwardhana, P. Porambage, M. Liyanage, S.-Y. Chang, J. Kim, J. Kim, and M. Ylianttila, ``5G-NIDD: A comprehensive network intrusion detection dataset generated over 5G wireless network,'' arXiv:2212.01298, 2022.
+
+\bibitem{sommer2010outside}
+R. Sommer and V. Paxson, ``Outside the closed world: On using machine learning for network intrusion detection,'' in \emph{IEEE Symposium on Security and Privacy}, 2010.
+
+\bibitem{ring2019surveydatasets}
+M. Ring, S. Wunderlich, D. Scheuring, D. Landes, and A. Hotho, ``A survey of network-based intrusion detection data sets,'' \emph{Computers \& Security}, vol. 86, pp. 147--167, 2019.
 
 \bibitem{lundberg2017shap}
 S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predictions,'' in \emph{Advances in Neural Information Processing Systems}, 2017.
@@ -503,20 +681,86 @@ S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predict
 \bibitem{ribeiro2016lime}
 M. T. Ribeiro, S. Singh, and C. Guestrin, ``Why should I trust you? Explaining the predictions of any classifier,'' in \emph{Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}, 2016, pp. 1135--1144.
 
-\bibitem{samarakoon2022nidd}
-S. Samarakoon, Y. Siriwardhana, P. Porambage, M. Liyanage, S.-Y. Chang, J. Kim, J. Kim, and M. Ylianttila, ``5G-NIDD: A comprehensive network intrusion detection dataset generated over 5G wireless network,'' arXiv:2212.01298, 2022.
+\bibitem{guidotti2018survey}
+R. Guidotti, A. Monreale, S. Ruggieri, F. Turini, D. Pedreschi, and F. Giannotti, ``A survey of methods for explaining black box models,'' \emph{ACM Computing Surveys}, vol. 51, no. 5, pp. 1--42, 2018.
+
+\bibitem{arrieta2020xai}
+A. B. Arrieta et al., ``Explainable artificial intelligence (XAI): Concepts, taxonomies, opportunities and challenges toward responsible AI,'' \emph{Information Fusion}, vol. 58, pp. 82--115, 2020.
+
+\bibitem{rjoub2023xai}
+G. Rjoub, J. Bentahar, and O. A. Wahab, ``Explainable AI for cybersecurity: A survey,'' \emph{IEEE Access}, 2023.
+
+\bibitem{samek2021explaining}
+W. Samek, G. Montavon, S. Lapuschkin, C. J. Anders, and K.-R. Muller, ``Explaining deep neural networks and beyond: A review of methods and applications,'' \emph{Proceedings of the IEEE}, vol. 109, no. 3, pp. 247--278, 2021.
 
 \bibitem{scheirer2013open}
 W. J. Scheirer, A. de Rezende Rocha, A. Sapkota, and T. E. Boult, ``Toward open set recognition,'' \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 35, no. 7, pp. 1757--1772, 2013.
 
+\bibitem{hendrycks2017baseline}
+D. Hendrycks and K. Gimpel, ``A baseline for detecting misclassified and out-of-distribution examples in neural networks,'' in \emph{International Conference on Learning Representations}, 2017.
+
+\bibitem{guo2017calibration}
+C. Guo, G. Pleiss, Y. Sun, and K. Q. Weinberger, ``On calibration of modern neural networks,'' in \emph{International Conference on Machine Learning}, 2017.
+
+\bibitem{bendale2016openmax}
+A. Bendale and T. E. Boult, ``Towards open set deep networks,'' in \emph{IEEE Conference on Computer Vision and Pattern Recognition}, 2016.
+
+\bibitem{liu2020energy}
+W. Liu, X. Wang, J. Owens, and Y. Li, ``Energy-based out-of-distribution detection,'' in \emph{Advances in Neural Information Processing Systems}, 2020.
+
+\bibitem{angelopoulos2023conformal}
+A. N. Angelopoulos and S. Bates, ``Conformal prediction: A gentle introduction,'' \emph{Foundations and Trends in Machine Learning}, vol. 16, no. 4, pp. 494--591, 2023.
+
+\bibitem{liu2008isolation}
+F. T. Liu, K. M. Ting, and Z.-H. Zhou, ``Isolation forest,'' in \emph{Proceedings of the IEEE International Conference on Data Mining}, 2008, pp. 413--422.
+
+\bibitem{kairouz2021fl}
+P. Kairouz et al., ``Advances and open problems in federated learning,'' \emph{Foundations and Trends in Machine Learning}, vol. 14, no. 1--2, pp. 1--210, 2021.
+
+\bibitem{nguyen2021flids}
+D. C. Nguyen, M. Ding, P. N. Pathirana, A. Seneviratne, J. Li, and H. V. Poor, ``Federated learning for Internet of Things: A comprehensive survey,'' \emph{IEEE Communications Surveys \& Tutorials}, vol. 23, no. 3, pp. 1622--1658, 2021.
+
+\bibitem{mothukuri2021fliot}
+V. Mothukuri, R. M. Parizi, S. Pouriyeh, Y. Huang, A. Dehghantanha, and G. Srivastava, ``A survey on security and privacy of federated learning,'' \emph{Future Generation Computer Systems}, vol. 115, pp. 619--640, 2021.
+
+\bibitem{sukhbaatar2016commnet}
+S. Sukhbaatar, A. Szlam, and R. Fergus, ``Learning multiagent communication with backpropagation,'' in \emph{Advances in Neural Information Processing Systems}, 2016.
+
+\bibitem{foerster2016learning}
+J. Foerster, I. A. Assael, N. de Freitas, and S. Whiteson, ``Learning to communicate with deep multi-agent reinforcement learning,'' in \emph{Advances in Neural Information Processing Systems}, 2016.
+
+\bibitem{lowe2017maddpg}
+R. Lowe et al., ``Multi-agent actor-critic for mixed cooperative-competitive environments,'' in \emph{Advances in Neural Information Processing Systems}, 2017.
+
+\bibitem{breiman2001random}
+L. Breiman, ``Random forests,'' \emph{Machine Learning}, vol. 45, no. 1, pp. 5--32, 2001.
+
+\bibitem{chen2016xgboost}
+T. Chen and C. Guestrin, ``XGBoost: A scalable tree boosting system,'' in \emph{Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}, 2016.
+
+\bibitem{ke2017lightgbm}
+G. Ke et al., ``LightGBM: A highly efficient gradient boosting decision tree,'' in \emph{Advances in Neural Information Processing Systems}, 2017.
+
+\bibitem{borisov2022deep}
+V. Borisov, T. Leemann, K. Seßler, J. Haug, M. Pawelczyk, and G. Kasneci, ``Deep neural networks and tabular data: A survey,'' \emph{IEEE Transactions on Neural Networks and Learning Systems}, 2022.
+
+\bibitem{gorishniy2021revisiting}
+Y. Gorishniy, I. Rubachev, V. Khrulkov, and A. Babenko, ``Revisiting deep learning models for tabular data,'' in \emph{Advances in Neural Information Processing Systems}, 2021.
+
+\bibitem{shwartz2022tabular}
+L. Shwartz-Ziv and A. Armon, ``Tabular data: Deep learning is not all you need,'' \emph{Information Fusion}, vol. 81, pp. 84--90, 2022.
+
 \bibitem{chandola2009survey}
 V. Chandola, A. Banerjee, and V. Kumar, ``Anomaly detection: A survey,'' \emph{ACM Computing Surveys}, vol. 41, no. 3, pp. 1--58, 2009.
 
-\bibitem{chatterjee2022iot}
-A. Chatterjee and B. S. Ahmed, ``IoT anomaly detection methods and applications: A survey,'' \emph{Internet of Things}, vol. 19, 100551, 2022.
-
 \bibitem{garg2020multistage}
 S. Garg, K. Kaur, S. Batra, G. Kaddoum, and N. Kumar, ``A multi-stage anomaly detection scheme for augmenting the security in IoT-enabled applications,'' \emph{Future Generation Computer Systems}, vol. 104, pp. 105--118, 2020.
+
+\bibitem{alzhrani2023ddos}
+R. M. Alzhrani and M. A. Alliheedi, ``5G networks and IoT devices: Mitigating DDoS attacks with deep learning techniques,'' arXiv:2311.06938, 2023.
+
+\bibitem{alshmarni2024malware}
+A. F. Alshmarni and M. A. Alliheedi, ``Enhancing malware detection by integrating machine learning with Cuckoo Sandbox,'' \emph{Journal of Information Security and Cybercrimes Research}, vol. 7, no. 1, pp. 85--92, 2024.
 
 \end{thebibliography}
 
