@@ -115,8 +115,6 @@ The current manuscript draft is in:
 manuscript/main.tex
 ```
 
-It has been updated to frame the method as **X-MAG-COS: Composite Open-Set Scoring for Explanation-Aware Multi-Agent IDS** and now includes the three-seed stability analysis.
-
 ## Scientific caution
 
 Do not report synthetic smoke-test numbers as paper results. Only tables produced from the real extracted `data/5G-NIDD/Encoded.csv` should be used. The seed-stability result is the current conservative result; single-seed tables should be described as method-selection or ablation evidence.
