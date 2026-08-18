@@ -106,15 +106,3 @@ results/tables/table_seed_stability_cos24_all_rows.csv
 results/tables/table_seed_stability_cos24_by_attack.csv
 results/tables/table_seed_stability_cos24_overall.csv
 ```
-
-## Paper files
-
-The current manuscript draft is in:
-
-```text
-manuscript/main.tex
-```
-
-## Scientific caution
-
-Do not report synthetic smoke-test numbers as paper results. Only tables produced from the real extracted `data/5G-NIDD/Encoded.csv` should be used. The seed-stability result is the current conservative result; single-seed tables should be described as method-selection or ablation evidence.
