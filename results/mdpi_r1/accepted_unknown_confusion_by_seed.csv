@@ -1,0 +1,16 @@
+held_out_attack,seed,assigned_known_class,count,accepted_unknown_total,accepted_unknown_fraction
+udpflood,7,Benign,453563,453563,1.0
+udpflood,21,Benign,457340,457340,1.0
+udpflood,42,Benign,457340,457340,1.0
+udpflood,84,Benign,453862,453862,1.0
+udpflood,123,Benign,457340,457340,1.0
+slowratedos,7,HTTPFlood,56217,56350,0.997639751552795
+slowratedos,7,Benign,133,56350,0.002360248447204969
+slowratedos,21,HTTPFlood,53392,53597,0.9961751590574099
+slowratedos,21,Benign,205,53597,0.00382484094259007
+slowratedos,42,HTTPFlood,37803,37883,0.9978882348282871
+slowratedos,42,Benign,80,37883,0.0021117651717129054
+slowratedos,84,HTTPFlood,47358,47522,0.9965489667943268
+slowratedos,84,Benign,164,47522,0.0034510332056731617
+slowratedos,123,HTTPFlood,59105,59310,0.9965435845557241
+slowratedos,123,Benign,205,59310,0.0034564154442758388
