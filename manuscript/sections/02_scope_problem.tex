@@ -1,0 +1,63 @@
+\section{Scope, System Model, and Problem Formulation}
+
+\subsection{Scope and assumptions}
+
+The confirmatory experiment is a \emph{source-partitioned inference simulation}, not a physical 5G deployment. 5G-NIDD provides source-side metadata, denoted \texttt{sVid}, that is excluded from predictor training and used only to assign flows to eight monitor slots through a stable hash. Each flow has one owner source. The principal method transmits one owner message to the coordinator; it does not claim consensus among simultaneously observing agents. Accordingly, we use the terms ``source monitor'' and ``multi-source'' throughout.
+
+The reported bytes are application-layer evidence payloads. They exclude lower-layer IP, UDP, QUIC, Message Queuing Telemetry Transport (MQTT), Constrained Application Protocol (CoAP), and 5G user-plane headers. The message can be carried by existing transports; no radio-standard modification is required \cite{rfc7252,mqtt5}. Network latency, retransmission, authentication, and scheduler interactions are outside the main benchmark and are examined only in exploratory stress tests.
+
+The threat model assumes attacks alter flow statistics but do not initially compromise the source monitor. A separate experiment manipulates class, attribution, and anomaly fields or replays benign messages. Those attacks expose vulnerabilities; they are not presented as a solved Byzantine-resilience problem.
+
+\subsection{Notation}
+
+Let $\mathcal{Y}=\{1,\ldots,K\}$ be the known label set, and let $h\notin\mathcal{Y}$ be the family withheld for open-set testing. After leakage-controlled preprocessing, a flow is $x\in\R^d$. For 5G-NIDD, each holdout leaves $K=8$ known classes and produces $d=88$ transformed features. For the CICIoT2023 category stress test, $K=7$ and $d=38$.
+
+A source monitor outputs a probability vector $p(x)\in\Delta^{K-1}$, an attribution-proxy vector $\phi(x)\in\R^d$, and a normalized anomaly value $a(x)\in[0,1]$. The encoder $e$ produces a serialized message $m=e(x)$ with size $B(m)$ bytes. The known head returns
+\begin{equation}
+q_\theta(m)\in\Delta^{K-1},\qquad
+\widehat{y}(m)=\argmax_{c\in\mathcal{Y}}q_{\theta,c}(m).
+\label{eq:knownhead}
+\end{equation}
+The open-set head returns $S_\psi(m)\in[0,1]$ and rejects the observation when its calibrated p-value does not exceed $\alpha$.
+
+\begin{table}[H]
+\caption{Principal symbols.}
+\label{tab:notation}
+\centering
+\begin{tabular}{ll}
+\toprule
+Symbol & Meaning \\
+\midrule
+$d$ & transformed predictor dimension ($88$ on 5G-NIDD; $38$ on CICIoT2023) \\
+$K$ & number of known classes in one holdout ($8$ and $7$, respectively) \\
+$m=e(x)$ & serialized evidence message \\
+$B(m), B_{\max}$ & actual message bytes and allowed byte budget \\
+$q_\theta(m)$ & known-class probability vector \\
+$u,a,r$ & normalized uncertainty, anomaly, and prototype-residual evidence \\
+$S_\psi(m)$ & scalar open-set score \\
+$\tau$ & validation-calibrated rejection threshold \\
+$\alpha$ & target known-traffic false-positive probability \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Constrained multi-objective design}
+
+Let $F_{\rm known}$ be known-class macro-F1, $R_{\rm unk}(\alpha)$ be held-out-family recall at false-positive budget $\alpha$, and $C$ be computational cost. The design problem is
+\begin{equation}
+\begin{aligned}
+\max_{\theta,\psi,e}\quad&
+\left(F_{\rm known}(\theta,e),\,R_{\rm unk}(\psi,e;\alpha)\right)\\
+\text{subject to}\quad&
+\FPR_{\rm known}(\psi,e)\leq\alpha,\quad
+B(e)\leq B_{\max},\quad C(\theta,\psi,e)\leq C_{\max}.
+\end{aligned}
+\label{eq:multiobjective}
+\end{equation}
+Equation~\eqref{eq:multiobjective} is a constrained multi-objective formulation, not a scalar maximization of a vector. For a fixed application preference, a scalarized objective may be written
+\begin{equation}
+J_{\eta,\rho}=1-F_{\rm known}+\eta\left(1-R_{\rm unk}(\alpha)\right)
++\rho\,\frac{B(e)}{B_{\max}},
+\label{eq:scalarization}
+\end{equation}
+subject to the same FPR and compute constraints. The experiments do not claim global Pareto optimality. They evaluate a finite encoding family and identify nondominated empirical operating points.
