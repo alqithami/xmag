@@ -41,9 +41,8 @@ scripts/mdpi_revision_*.py       Protocol-matched revision experiments
 scripts/run_mdpi_round1_all.sh   Resumable full revision suite
 scripts/export_mdpi_hard_holdout_support.py
                                  No-heredoc ROC/histogram/confusion exporter
-results/mdpi_r1/                 Matched 5G-NIDD results and figures
-results/mdpi_r1_ciciot/          CICIoT2023 stress-test results
-results/archives/                Exact result/code archives
+results/mdpi_r1/                 Matched 5G-NIDD summary tables
+results/mdpi_r1_ciciot/          CICIoT2023 stress-test summary tables
 docs/MDPI_ROUND1_RUNBOOK.md      Reproduction and raw-support instructions
 docs/MDPI_ROUND1_RESULTS.md      Result interpretation
 ```
@@ -98,4 +97,4 @@ python scripts/export_mdpi_hard_holdout_support.py --runs-root runs/mdpi_r1_raw
 
 ## Data and result policy
 
-Only derived metrics, figures, configurations, and code are committed. Obtain 5G-NIDD and CICIoT2023 from their official distribution sources and follow their terms of use. The exact matched revision result archives are retained under `results/archives/`.
+Only derived summary metrics, configurations, and code are committed. Obtain 5G-NIDD and CICIoT2023 from their official distribution sources and follow their terms of use. Full per-trial arrays and generated ZIP archives remain local because they are reproducible from the checked-in scripts and public datasets.
