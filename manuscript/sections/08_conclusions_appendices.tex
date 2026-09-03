@@ -1,0 +1,95 @@
+\section{Conclusions}
+
+We presented \method{}, a calibrated, communication-constrained IDS that separates known-class classification from unknown-family rejection. The revised mathematical treatment defines a constrained multi-objective design, proves structural properties of the composite score, and provides finite-sample split-conformal false-positive control under exchangeability. In a source-aware, five-seed 5G-NIDD evaluation, the 16-byte half-precision encoding preserves known-class macro-F1 and is statistically indistinguishable in detection quality from the 24-byte reference while reducing the evidence payload by 95.5\% relative to the transformed full-feature vector. The same experiment also changes the paper's conclusion: X-MAG-COS does not dominate all full-feature or uncertainty-only baselines, and UDPFlood remains a decisive failure case. Attribution fidelity, channel artifacts, active source compromise, and CICIoT2023 transfer further delimit the claim. The supported contribution is therefore a compact and calibrated evidence-messaging design with transparent operating tradeoffs, not a universally superior or deployment-ready intrusion detector.
+
+\authorcontributions{Conceptualization, methodology, software, validation, formal analysis, investigation, data curation, writing---original draft preparation, writing---review and editing, and visualization, all authors. All authors have read and agreed to the published version of the manuscript.}
+
+% AUTHOR ACTION: insert the verified award number if the sponsor requires it.
+\funding{This research was supported by the Cybersecurity Research and Innovation Pioneers Initiative, provided by the National Cybersecurity Authority (NCA) in the Kingdom of Saudi Arabia.}
+
+\institutionalreview{Not applicable.}
+\informedconsent{Not applicable.}
+
+\dataavailability{Publicly available datasets were analyzed in this study. The 5G-NIDD dataset is available through IEEE DataPort at \url{https://doi.org/10.21227/xtep-hv36} and Fairdata at \url{https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361}. CICIoT2023 is available from the Canadian Institute for Cybersecurity, University of New Brunswick. No new primary network-traffic data were collected. The source code, leakage-control rules, experiment configurations, and derived aggregate tables are available at \url{https://github.com/alqithami/xmag}. The original third-party datasets are not redistributed and must be obtained from their respective official sources under the applicable terms.}
+
+\acknowledgments{Not applicable.}
+
+\conflictsofinterest{The authors declare no conflicts of interest. The funder had no role in the design of the study; in the collection, analysis, or interpretation of the data; in the writing of the manuscript; or in the decision to publish the results.}
+
+\abbreviations{Abbreviations}{
+The following abbreviations are used in this manuscript:\\
+\noindent
+\begin{tabular}{@{}ll}
+5G & fifth-generation mobile communication\\
+AUROC & area under the receiver operating characteristic curve\\
+CoAP & Constrained Application Protocol\\
+EVT & extreme value theory\\
+FL & federated learning\\
+FPR & false-positive rate\\
+IDS & intrusion detection system\\
+IoT & Internet of Things\\
+LIME & local interpretable model-agnostic explanations\\
+MQTT & Message Queuing Telemetry Transport\\
+OOD & out-of-distribution\\
+SHAP & Shapley additive explanations\\
+TPR & true-positive rate\\
+XAI & explainable artificial intelligence
+\end{tabular}
+}
+
+\appendixtitles{yes}
+\appendixstart
+\appendix
+
+\section{Complete Statistical Test Results}
+
+The complete paired test table, including paired $t$-tests, Wilcoxon tests, Holm corrections, rank-biserial effects, and bootstrap confidence intervals for all evaluated metrics, is supplied as supplementary data. The main text reports only comparisons necessary to interpret the claims.
+
+\section{Reproducibility Parameters}
+
+\begin{table}[H]
+\caption{Confirmatory 5G-NIDD protocol.}
+\centering
+\begin{tabular}{ll}
+\toprule
+Element & Setting \\
+\midrule
+Holdouts & eight attack families, one held out at a time \\
+Seeds & 7, 21, 42, 84, 123 \\
+Known split & 56\% train, 14\% validation, 30\% test \\
+Unknown split & entire held-out family used only for test \\
+Monitor ownership & stable hash of leakage-excluded \texttt{sVid} into eight slots \\
+Local classifier & Random Forest, 30 trees, min leaf 2, balanced subsample \\
+Anomaly model & Isolation Forest, 100 trees, automatic contamination \\
+Coordinator & balanced one-versus-rest logistic regression, liblinear \\
+Threshold & split-conformal, $\alpha=0.05$ \\
+Main message & 16-byte binary16 class/proxy/anomaly encoding \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{CICIoT2023 Category Detail}
+
+\begin{table}[H]
+\caption{Category-level X-MAG-COS-16Q results on the CICIoT2023 stress test (seed 42).}
+\centering
+\begin{tabular}{lrr}
+\toprule
+Held-out category & Unknown AUROC & Unknown recall \\
+\midrule
+BruteForce & 0.7978 & 0.2957 \\
+DDoS & 0.6331 & 0.0639 \\
+DoS & 0.3411 & 0.0004 \\
+Mirai & 0.6371 & 0.0054 \\
+Recon & 0.8705 & 0.4653 \\
+Spoofing & 0.8311 & 0.2802 \\
+Web & 0.7997 & 0.3317 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Software and Result Availability}
+
+The repository contains the analysis scripts used to produce the five-seed protocol-matched results, sensitivity analysis, statistical tests, attribution-fidelity measurements, message serializers, and exploratory stress tests. Aggregate outputs are provided as supplementary data. Raw third-party datasets are excluded.
+
+\reftitle{References}
