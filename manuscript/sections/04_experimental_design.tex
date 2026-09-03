@@ -1,0 +1,43 @@
+\section{Experimental Design}
+
+\subsection{Datasets and leakage control}
+
+The primary data are the encoded 5G-NIDD flows: 1,215,890 observations covering benign traffic and eight attack families \cite{siriwardhana2025descriptor}. The label counts are 477,737 Benign, 140,812 HTTPFlood, 1,155 ICMPFlood, 9,721 SYNFlood, 20,043 SYNScan, 73,124 SlowrateDoS, 20,052 TCPConnectScan, 457,340 UDPFlood, and 15,906 UDPScan.
+
+Labels, attack-tool fields, scenario/order fields, and endpoint identifiers matching the leakage rules are excluded from predictive inputs. Numeric fields are median-imputed and standardized. Categorical fields are most-frequent imputed and one-hot encoded. The preprocessing model is fit only on the training partition. The source identifier \texttt{sVid} is retained solely for assigning ownership to eight monitor slots and is never a predictor.
+
+The secondary CICIoT2023 stress test uses a transparent category-balanced-by-subattack sample generated from the complete CSV release \cite{neto2023ciciot}. It contains 10,000 Benign, 10,000 BruteForce, 119,967 DDoS, 39,982 DoS, 29,999 Mirai, 42,261 Recon, 19,999 Spoofing, and 24,829 Web observations. This experiment is not presented as a generalization success; it measures transfer limitations under a fixed encoding.
+
+\subsection{Holdouts, splits, and seeds}
+
+For every 5G-NIDD task, one attack family is excluded from all model fitting and used only as unknown test data. The remaining known observations are divided into 56\% training, 14\% validation, and 30\% known test data. Validation data calibrate normalization and the conformal rejection rule. The entire procedure is repeated for eight attack families and seeds $\{7,21,42,84,123\}$, giving 40 matched trials per method.
+
+The CICIoT2023 experiment holds out each of seven attack categories once and uses seed 42. It is reported separately because its purpose is stress testing, not confirmatory inference.
+
+\subsection{Models and baselines}
+
+Each source classifier is a Random Forest with 30 trees, minimum leaf size 2, and balanced-subsample class weighting. Each source anomaly model is an Isolation Forest with 100 trees and automatic contamination. The known head is one-versus-rest logistic regression with balanced class weights and the liblinear solver.
+
+The protocol-matched baselines are:
+\begin{itemize}
+    \item centralized full-feature Random Forest with entropy rejection;
+    \item centralized full-feature Extra Trees with entropy rejection;
+    \item centralized Random Forest with class-conditional extreme-value-theory (EVT) tail rejection, an OpenMax-style comparison;
+    \item an all-source logit-average plus anomaly score;
+    \item a five-round FedAvg linear classifier;
+    \item \dhmethod{}, which uses the same 24-byte message but coordinator uncertainty only;
+    \item message-content, precision, size, and score-component ablations.
+\end{itemize}
+Published deep and federated IDS methods are discussed in Section~2, but we do not report their published closed-set numbers as direct competitors because the data splits, unknown-family definitions, and communication accounting differ.
+
+\subsection{Metrics and statistical analysis}
+
+Known classification is measured by macro-F1. Unknown ranking is measured by AUROC. Operational recall is measured using the split-conformal $\alpha=0.05$ rule, and the resulting known-test FPR is reported. We also report TPR at a test-set FPR of 5\% as a ranking diagnostic, but it is not used as the operational threshold.
+
+Comparisons use matched seed--holdout pairs. We report paired $t$-tests, Wilcoxon signed-rank tests \cite{wilcoxon1945}, Holm-adjusted p-values \cite{holm1979}, rank-biserial effects, and bootstrap 95\% confidence intervals \cite{efron1993bootstrap}. The family of 20 method--metric tests is corrected jointly.
+
+\subsection{Computational accounting}
+
+The experiments were executed on an Apple M4 Max workstation with 14 logical CPU cores and 36 GiB of memory, running macOS 26.6.2 (arm64), Python 3.12.9, NumPy 2.5.0, pandas 3.0.3, SciPy 1.18.1, scikit-learn 1.9.0, SHAP 0.52.0, joblib 1.6.0, and Matplotlib 3.11.1. All methods in the protocol-matched comparison were evaluated in the same software environment and on the same machine.
+
+The measured latency is coordinator prediction time divided by the number of known and unknown test flows; it is not end-to-end device or network latency. Serialized model artifacts are measured with joblib. The aggregate X-MAG-COS artifact (eight source classifiers, eight anomaly models, and coordinator) is approximately 10.4 MiB; the centralized Random Forest is 3.57 MiB and Extra Trees is 24.16 MiB. Thus, the evidence message is communication-compact, but the aggregate model is not smaller than every centralized baseline.
