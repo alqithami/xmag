@@ -1,0 +1,18 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "machine": "arm64",
+  "processor": "arm",
+  "python": "3.12.9 | packaged by conda-forge | (main, Mar  4 2025, 22:44:42) [Clang 18.1.8 ]",
+  "packages": {
+    "numpy": "2.5.0",
+    "pandas": "3.0.3",
+    "scipy": "1.18.1",
+    "sklearn": "1.9.0",
+    "matplotlib": "3.11.1",
+    "joblib": "1.6.0",
+    "shap": "0.52.0"
+  },
+  "machdep.cpu.brand_string": "Apple M4 Max",
+  "hw.memsize": "38654705664",
+  "hw.ncpu": "14"
+}
