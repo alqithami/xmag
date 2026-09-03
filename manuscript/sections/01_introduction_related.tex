@@ -1,0 +1,61 @@
+\section{Introduction}
+
+Fifth-generation (5G) connectivity expands the scale and heterogeneity of Internet of Things (IoT) deployments, enabling edge services in transportation, health care, industrial automation, smart infrastructure, and autonomous systems. The same architecture increases the number of observable endpoints, network functions, and attack surfaces. An intrusion detection system (IDS) for this setting must distinguish known malicious behavior, identify traffic that does not belong to any class observed during training, and operate without assuming that every source can continuously transmit a complete high-dimensional record \cite{sicari2015security,algaradi2020iot,liyanage2018guide,ferrag2023edge}.
+
+Many machine-learning IDS studies remain closed-set evaluations: every test label also appears during training, and the reported objective is classification accuracy or F1-score \cite{ring2019survey,sommer2010outside}. This design does not directly measure the ability to reject a new attack family. It also hides the communication assumption behind centralized feature access. These omissions are important in 5G-IoT systems, where traffic may be observed by gateways, virtualized network functions, mobile-edge services, or source-adjacent monitors that cannot or should not stream raw flow vectors to a coordinator.
+
+Open-set recognition addresses the first omission by allowing a model to reject samples that do not belong to the known label set \cite{scheirer2013open,bendale2016openmax,geng2021survey,hendrycks2017ood,liu2020energy}. Federated and distributed learning address related privacy and ownership constraints by retaining data at local clients \cite{mcmahan2017fedavg,kairouz2021fl,iotdefender2020,bellmunt2026ftl,man2021fedacnn}. These literatures nevertheless leave a practical question: \emph{what compact evidence should a source transmit for per-flow cooperative detection?} Full logits, model updates, raw features, and anomaly alerts answer different problems and incur different costs.
+
+Attribution methods such as Shapley additive explanations (SHAP) and local interpretable model-agnostic explanations (LIME) can identify influential features \cite{lundberg2017shap,ribeiro2016lime,arrieta2020xai,samek2021xai}. The present work uses this idea more narrowly. A local source transmits one low-cost attribution proxy as part of an evidence message. This signal is not claimed to be a full SHAP explanation. It is evaluated as a compact descriptor whose ranking agreement and cost are measured against TreeSHAP.
+
+We propose \method{}, a source-partitioned, communication-constrained IDS with two separate outputs. The known-class head classifies compact evidence messages. The open-set head combines three normalized signals: predictive uncertainty, local anomaly evidence, and distance from the prototype of the predicted known class. The main methodological insight is the separation of classification and rejection: a classifier can remain highly accurate on known traffic while being confidently wrong on a semantically related held-out family.
+
+The study makes four methodological advances. First, the problem is formalized as a constrained multi-objective design rather than an ill-posed maximization of a metric vector. Second, all primary methods, baselines, and message ablations use the same five seeds, eight held-out families, source-aware partition, and nominal 5\% false-positive operating rule. Third, the evidence encoding is evaluated at 12, 16, 18, 20, 24, and 30 bytes, with actual serializers for the 16-, 20-, and 24-byte formats. Fourth, the empirical scope includes attribution fidelity, paired statistical tests, network artifacts, targeted message manipulation, and a CICIoT2023 transfer stress test.
+
+The contributions are:
+\begin{enumerate}
+    \item A constrained mathematical formulation for joint known-class performance, unknown-family recall, false-positive control, communication size, and computation.
+    \item A compact attribution-aware evidence encoding. The principal operating point is a 16-byte half-precision message that is empirically equivalent to the 24-byte float32 reference on the confirmatory protocol.
+    \item A composite open-set score with boundedness, monotonicity, perturbation-stability, and split-conformal false-positive-control results.
+    \item A protocol-matched empirical study comprising 40 5G-NIDD trials, centralized and distributed baselines, message and score ablations, sensitivity analysis, attribution-fidelity measurement, exploratory network/attack stress tests, and CICIoT2023 transfer analysis.
+\end{enumerate}
+
+\section{Related Work}
+
+\subsection{5G-IoT intrusion detection and evaluation validity}
+
+Datasets such as UNSW-NB15, CICIDS2017, Bot-IoT, TON\_IoT, Edge-IIoTset, CICIoT2023, and 5G-NIDD support reproducible IDS research \cite{moustafa2015unsw,sharafaldin2018cicids,koroniotis2019botiot,alsaedi2020toniot,ferrag2022edgeiiot,neto2023ciciot,siriwardhana2025descriptor}. 5G-NIDD is especially relevant because it was collected from a functional 5G test network and contains benign traffic, denial-of-service attacks, and scans \cite{siriwardhana2025descriptor,fivegnidddata}. Recent work has compared conventional machine-learning models under leakage-free processing \cite{bouke2024leakage}, optimized classifiers in wireless access settings \cite{ismail2025adaptive}, and deep architectures for 5G-NIDD classification \cite{deeptransids2025}. Most of these results concern closed-set detection; their accuracy values are therefore not direct substitutes for leave-one-family-out open-set evaluation.
+
+Data leakage is a major validity risk. Identifiers, attack-tool fields, capture-order variables, or scenario labels can make a benchmark artificially easy \cite{bouke2024leakage,sommer2010outside}. Our protocol removes these fields from the predictive feature set and uses source metadata only for assigning ownership, not as a classifier input.
+
+\subsection{Distributed and federated IDS}
+
+Federated learning (FL) trains shared models without centralizing raw client data \cite{mcmahan2017fedavg,kairouz2021fl}. IoTDefender introduced federated transfer learning for 5G-IoT intrusion detection \cite{iotdefender2020}; FedACNN considered edge-assisted IoT IDS \cite{man2021fedacnn}; and recent federated-transfer work studied unknown attacks under heterogeneous client distributions \cite{bellmunt2026ftl}. These approaches focus primarily on model training. \method{} instead studies the semantics and byte cost of an inference-time evidence message. We include a protocol-matched FedAvg linear model and an all-source logit ensemble as empirical references, while avoiding direct numerical comparison with published studies that use different datasets and label protocols.
+
+\subsection{Open-set, anomaly, and calibrated rejection}
+
+Open-set recognition requires a model to recognize that some observations fall outside its known classes \cite{scheirer2013open,geng2021survey}. Maximum-probability and entropy scores are simple baselines but may remain overconfident \cite{hendrycks2017ood}. OpenMax applies extreme-value tail modeling to deep representations \cite{bendale2016openmax}, and energy scores offer a related out-of-distribution (OOD) criterion \cite{liu2020energy}. Isolation Forest provides a computationally efficient tabular anomaly signal \cite{liu2008iforest,chandola2009anomaly}. We compare classifier uncertainty, anomaly-only, message residual, an uncertainty--anomaly fusion, an extreme-value-theory tail score, and the proposed composite score.
+
+The operating threshold is calibrated on known validation traffic. Split-conformal p-values provide a finite-sample guarantee under exchangeability, separating threshold validity from ranking quality \cite{angelopoulos2023conformal}. This distinction is important: AUROC measures ranking across all thresholds, whereas unknown recall at a fixed known-traffic false-positive budget measures operational utility.
+
+\subsection{Attribution-aware evidence}
+
+SHAP provides additive feature attributions based on Shapley values \cite{lundberg2017shap}; LIME fits interpretable local surrogates \cite{ribeiro2016lime}. Broader explainable artificial intelligence (XAI) surveys emphasize fidelity, stability, and computational cost \cite{arrieta2020xai,samek2021xai}. \method{} does not transmit a complete explanation vector. Its attribution proxy multiplies a standardized feature value by the corresponding local model importance and selects the highest-magnitude item. The revised evaluation measures exact top-feature agreement, top-three overlap, rank correlation, and runtime relative to TreeSHAP.
+
+\begin{table}[H]
+\caption{Positioning relative to representative IDS directions. Numeric results are not compared across papers because datasets and protocols differ.}
+\label{tab:related}
+\centering
+\small
+\resizebox{\textwidth}{!}{\begin{tabular}{L{0.22\textwidth}ccccL{0.28\textwidth}}
+\toprule
+Direction & Distributed training & Unknown attacks & Per-flow byte budget & Attribution in message & Primary emphasis \\
+\midrule
+Leakage-free 5G-NIDD ML \cite{bouke2024leakage} & No & No & No & No & Valid centralized benchmarking \\
+IoTDefender \cite{iotdefender2020} & Yes & Transfer setting & No & No & Federated transfer learning \\
+FedACNN \cite{man2021fedacnn} & Yes & No & No & No & Edge-assisted federated classification \\
+Federated transfer IDS \cite{bellmunt2026ftl} & Yes & Yes & No & No & Heterogeneous client adaptation \\
+\method{} & Source-partitioned inference & Yes & Yes & Yes, proxy & Compact calibrated evidence messaging \\
+\bottomrule
+\end{tabular}}
+\end{table}
