@@ -1,0 +1,140 @@
+\section{Composite Open-Set Evidence Messaging}
+
+\subsection{Local evidence}
+
+A Random Forest source model gives $p(x)$ \cite{breiman2001rf}. The class evidence is the top class and its probability:
+\begin{equation}
+c^\star=\argmax_c p_c(x),\qquad v_c=p_{c^\star}(x).
+\end{equation}
+The attribution proxy is
+\begin{equation}
+\phi_j(x)=\widetilde{x}_j\,I_j,\qquad
+j^\star=\argmax_j|\phi_j(x)|,\qquad v_\phi=\phi_{j^\star}(x),
+\label{eq:proxy}
+\end{equation}
+where $\widetilde{x}_j$ is the standardized feature and $I_j$ is the normalized local Random Forest importance. An owner-specific Isolation Forest produces the anomaly value $a(x)$ \cite{liu2008iforest}. Equation~\eqref{eq:proxy} is a computational surrogate, not a Shapley-value identity.
+
+\subsection{Evidence encodings}
+
+The 24-byte reference uses float32 scalar values and an eight-byte framing field. We additionally implement a 16-byte encoding using IEEE 754 binary16 values \cite{ieee754}. It contains a four-byte header, a one-byte class identifier, a two-byte class probability, a two-byte feature identifier, a two-byte attribution value, a two-byte anomaly value, and three reserved bytes. A one-byte class identifier supports $K\leq256$; a two-byte feature identifier supports $d\leq65{,}536$. The measured values $K\in\{7,8\}$ and $d\in\{38,88\}$ are far below these limits.
+
+\begin{proposition}[Encoding sufficiency]
+If $K\leq256$ and $d\leq65{,}536$, the class and feature indices of the 16-byte layout are losslessly representable. Only the three evidence scalars are quantized to binary16.
+\end{proposition}
+\begin{proof}
+An unsigned byte represents integers from $0$ to $255$, and an unsigned two-byte integer represents integers from $0$ to $65{,}535$. The remaining fields do not encode indices.
+\end{proof}
+
+\begin{table}[H]
+\caption{Evaluated evidence layouts. The 16-, 20-, and 24-byte formats are implemented with byte-level serializers; the 12- and 18-byte rows are component ablations with equivalent payload accounting.}
+\label{tab:encodings}
+\centering
+\small
+\begin{tabular}{L{0.19\textwidth}L{0.43\textwidth}cc}
+\toprule
+Variant & Contents & Scalar precision & Bytes/flow \\
+\midrule
+Class+anomaly & top-1 class item and anomaly & float32 & 12 \\
+Class+proxy & top-1 class item and attribution proxy & float32 & 18 \\
+\compactmethod{} & class, proxy, anomaly, compact framing & binary16 & 16 \\
+X-MAG-COS-20B & class, proxy, anomaly, short framing & float32 & 20 \\
+\referencemethod{} & class, proxy, anomaly, extended framing & float32 & 24 \\
+X-MAG-COS-30B & top-2 class items, proxy, anomaly & float32 & 30 \\
+Full transformed flow & all 88 float32 features & float32 & 352 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Known-class and open-set heads}
+
+The coordinator fits a one-versus-rest logistic model to $m$. Its uncertainty is
+\begin{equation}
+u(m)=1-\max_c q_{\theta,c}(m).
+\end{equation}
+Let $\mu_c$ be the training-message prototype of class $c$ and let $\sigma$ contain coordinatewise training standard deviations. The residual is
+\begin{equation}
+r(m)=\left[\frac{1}{D_m}\sum_{\ell=1}^{D_m}
+\left(\frac{m_\ell-\mu_{\widehat{y},\ell}}{\max(\sigma_\ell,\epsilon)}\right)^2\right]^{1/2},
+\label{eq:residual}
+\end{equation}
+where $D_m$ is the message-vector dimension before serialization.
+
+Each raw signal is robustly normalized with the 5th and 95th percentiles of known validation data and clipped to $[0,1]$. Denoting the normalized values again by $u,a,r$, the composite score is
+\begin{align}
+S_1 &= \beta r+(1-\beta)u, \label{eq:s1}\\
+S_2 &= \lambda u+(1-\lambda)a, \label{eq:s2}\\
+S_{\rm COS} &= \gamma\max\{S_1,S_2\}+(1-\gamma)S_2.
+\label{eq:cos}
+\end{align}
+The reference parameters are $\beta=0.25$, $\lambda=0.50$, and $\gamma=0.25$. They encode a deliberately conservative hierarchy: uncertainty and anomaly evidence form the principal branch, while residual evidence acts as a guard against messages inconsistent with the predicted known class.
+
+\begin{proposition}[Boundedness and monotonicity]
+For $u,a,r,\beta,\lambda,\gamma\in[0,1]$, $S_{\rm COS}\in[0,1]$. Moreover, $S_{\rm COS}$ is nondecreasing in each of $u$, $a$, and $r$.
+\end{proposition}
+\begin{proof}
+$S_1$ and $S_2$ are convex combinations of values in $[0,1]$; therefore both belong to $[0,1]$. Their maximum also belongs to $[0,1]$, and Equation~\eqref{eq:cos} is another convex combination. Every coefficient in the two affine branches is nonnegative. The maximum of coordinatewise nondecreasing functions is nondecreasing, and the outer convex combination preserves this property.
+\end{proof}
+
+\begin{proposition}[Perturbation stability]
+For evidence triples $z=(u,a,r)$ and $z'=(u',a',r')$,
+\begin{align}
+|S_{\rm COS}(z)-S_{\rm COS}(z')|
+&\leq \gamma\max\{\Delta_1,\Delta_2\}+(1-\gamma)\Delta_2,\\
+\Delta_1&=(1-\beta)|u-u'|+\beta|r-r'|,\\
+\Delta_2&=\lambda|u-u'|+(1-\lambda)|a-a'|.
+\end{align}
+\end{proposition}
+\begin{proof}
+Apply the triangle inequality to the two affine branches and use
+$|\max(x,y)-\max(x',y')|\leq\max(|x-x'|,|y-y'|)$.
+\end{proof}
+
+These properties do not prove optimal detection. They show that the score remains interpretable, bounded, and stable to bounded evidence perturbations. The empirical sensitivity analysis assesses whether the selected parameters occupy a robust region.
+
+\subsection{Split-conformal calibration}
+
+For known validation scores $S_1,\ldots,S_n$ and a test score $S$, define the upper-tail split-conformal p-value
+\begin{equation}
+p(S)=\frac{1+\sum_{i=1}^{n}\mathbf{1}\{S_i\geq S\}}{n+1}.
+\label{eq:pvalue}
+\end{equation}
+The flow is rejected when $p(S)\leq\alpha$, with $\alpha=0.05$.
+
+\begin{theorem}[Finite-sample known-traffic false-positive control]
+If $S_1,\ldots,S_n,S_{n+1}$ are exchangeable known-traffic scores, then
+\begin{equation}
+\Pr\{p(S_{n+1})\leq\alpha\}
+\leq \frac{\lfloor\alpha(n+1)\rfloor}{n+1}\leq\alpha.
+\end{equation}
+\end{theorem}
+\begin{proof}
+Under exchangeability, the descending rank of $S_{n+1}$ among the $n+1$ scores is uniform up to ties. The rejection event contains at most $\lfloor\alpha(n+1)\rfloor$ ranks. Dividing by $n+1$ yields the result.
+\end{proof}
+
+The guarantee concerns known-traffic false positives under exchangeability. It does not guarantee unknown recall, which must be measured empirically.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{\begin{tikzpicture}[
+node distance=7mm and 8mm,
+box/.style={draw,rounded corners,align=center,minimum height=8mm,minimum width=25mm,fill=blue!5},
+head/.style={draw,rounded corners,align=center,minimum height=10mm,minimum width=34mm,fill=green!7},
+arr/.style={-Latex,thick}
+]
+\node[box] (flow) {flow $x\in\R^d$};
+\node[box,right=of flow] (local) {source model\\$p(x)$, $\phi(x)$, $a(x)$};
+\node[box,right=of local] (msg) {16-byte message\\$(c^\star,v_c,j^\star,v_\phi,a)$};
+\node[head,right=of msg,yshift=7mm] (cls) {known-class head\\$q_\theta(m)$};
+\node[head,right=of msg,yshift=-10mm] (open) {open-set head\\$S_{\rm COS}(u,a,r)$};
+\node[box,right=of cls] (known) {known label};
+\node[box,right=of open] (reject) {conformal reject};
+\draw[arr] (flow)--(local);
+\draw[arr] (local)--(msg);
+\draw[arr] (msg)--(cls);
+\draw[arr] (msg)--(open);
+\draw[arr] (cls)--(known);
+\draw[arr] (open)--(reject);
+\end{tikzpicture}}
+\caption{Revised \method{} architecture. $c^\star$ and $v_c$ denote the top class and probability; $j^\star$ and $v_\phi$ denote the top attribution-proxy feature and contribution; $a$ is local anomaly evidence. The classification and rejection heads are distinct.}
+\label{fig:architecture}
+\end{figure}
