@@ -1,0 +1,53 @@
+\section{CICIoT2023 Transfer Stress Test}
+
+The fixed 5G-NIDD design is transferred without category-specific retuning to seven CICIoT2023 attack-category holdouts. Table~\ref{tab:ciciot} shows that the stress test is difficult for all methods. The all-source logit ensemble obtains the largest mean AUROC and recall, although its known-class F1 remains below the centralized Random Forest. X-MAG-COS-16Q does not improve monotonically with additional bytes: the 24-byte row is numerically identical, while 30 bytes is worse. Thus, increasing the evidence payload by 4--14 bytes does not resolve the observed domain shift.
+
+\begin{table}[H]
+\caption{CICIoT2023 category-holdout stress test (seven categories, seed 42). Recall and FPR use the conformal 5\% rule. Full transformed features require 152 bytes.}
+\label{tab:ciciot}
+\centering
+\scriptsize
+\begin{tabular}{lrrrrr}
+\toprule
+Method & Bytes & Known F1 & AUROC & Recall & Mean FPR \\
+\midrule
+Class+anomaly & 12 & 0.7225 & 0.7032 & 0.2034 & 0.0498 \\
+X-MAG-COS-16Q & 16 & 0.7224 & 0.7015 & 0.2061 & 0.0500 \\
+Class+proxy & 18 & 0.7223 & 0.6236 & 0.1563 & 0.0499 \\
+X-MAG-COS-24B & 24 & 0.7224 & 0.7015 & 0.2061 & 0.0500 \\
+X-MAG-COS-30B & 30 & 0.7166 & 0.6777 & 0.1613 & 0.0506 \\
+All-source logit average & 32 & 0.7409 & 0.7640 & 0.2406 & 0.0506 \\
+Central Random Forest & 152 & 0.7447 & 0.7313 & 0.2135 & 0.0504 \\
+FedAvg linear & -- & 0.5936 & 0.5918 & 0.0941 & 0.0502 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.84\textwidth]{figures/ciciot_per_category.pdf}
+\caption{CICIoT2023 category-level performance of X-MAG-COS-16Q. DDoS, DoS, and Mirai remain poorly rejected; the experiment is a boundary test rather than evidence of broad cross-dataset generalization.}
+\label{fig:ciciot}
+\end{figure}
+
+\section{Discussion}
+
+\subsection{What the confirmatory evaluation establishes}
+
+The revised evidence supports three conclusions. First, compact evidence can preserve known-class classification. The 16-byte message differs negligibly from the 24-byte float32 reference and from the centralized Random Forest in macro-F1. Second, the open-set problem remains attack-family dependent. High mean values do not compensate for the UDPFlood failure, which persists across five seeds and the full hyperparameter grid. Third, the composite head is not globally dominant over uncertainty alone. It provides a small recall-oriented tradeoff, whereas the broader contribution is the calibrated two-head architecture and explicit communication frontier.
+
+\subsection{Why the two difficult families fail differently}
+
+The per-flow diagnostics replace the earlier generic semantic-overlap hypothesis with measured evidence. For SlowrateDoS, the classifier assigns 99.691\% of missed decisions to HTTPFlood, and the score distribution is shifted upward despite overlap around the threshold. This is consistent with class absorption between two application-layer flooding behaviors. UDPFlood exhibits a different failure: all missed decisions are assigned to Benign, its mean AUROC is below 0.5, and its scores concentrate in the low-score region occupied by known traffic. Increasing message size or changing the composite weights does not repair this behavior. The likely remedy is therefore not a larger encoding of the same instantaneous statistics, but additional discriminative structure such as protocol-preserving temporal features, sequence models, class-conditional density estimates, or source-aware calibration. The distinction also explains why a single statement about ``semantically similar flooding attacks'' is insufficient for both families.
+
+\subsection{Practical feasibility}
+
+The 16-byte payload is implementable as an application message over current constrained-network transports. The actual end-to-end wire size will be larger after transport and security headers, and batching several flow messages may be more efficient than one packet per flow. The one- and two-byte identifiers are sufficient for the measured dimensions. Binary16 quantization produces no measurable detection loss in the present data. However, the aggregate local-model artifact is approximately 10.4 MiB, so the phrase ``lightweight endpoint model'' would be misleading without device-level profiling. The supported claim is \emph{communication-compact evidence messaging}.
+
+\subsection{Relation to distributed IDS}
+
+The source-aware design is closer to multi-source edge monitoring than to a general multi-agent coordination algorithm. Each flow has one owner, and the principal coordinator consumes that owner's message. The exploratory peer-context experiment shows that simply concatenating stale or missing peer messages is unstable. A genuine multi-agent extension should model observation overlap, asynchronous state, trust, and Byzantine-resilient aggregation explicitly.
+
+\section{Limitations}
+
+The primary limitation is unknown-family heterogeneity: UDPFlood is essentially undetected at the conformal operating point, and the diagnostic analysis shows that missed UDPFlood decisions are classified as Benign rather than merely confused with another flood class. Second, the attribution field is a proxy. Its rank correlation with TreeSHAP is high, but exact top-feature agreement is modest. Third, the main source-partitioned architecture does not provide robust cross-agent fusion, and the exploratory peer-context extension is brittle. Fourth, a single compromised active source can collapse class prediction or suppress unknown rejection. Fifth, CICIoT2023 confirms that adding bytes alone does not produce cross-domain transfer. Sixth, the total model artifact is larger than the centralized Random Forest, and the reported microsecond latency covers the coordinator only.
