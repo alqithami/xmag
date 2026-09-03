@@ -37,12 +37,12 @@ The results also establish important limits:
 
 ## Hard-family diagnostics
 
-The reviewer-requested per-flow analysis is now complete for UDPFlood and SlowrateDoS:
+The reviewer-requested per-flow analysis is complete for UDPFlood and SlowrateDoS:
 
 - SlowrateDoS retains useful ranking (`AUROC 0.8994 +/- 0.0185`) but only `0.3035 +/- 0.1162` recall at the validation 95th-percentile rule. Of 254,662 missed seed-trial decisions, 99.691% were assigned to HTTPFlood.
 - UDPFlood is below random ranking on average (`AUROC 0.4533 +/- 0.0146`) and is almost never rejected (`0.0032 +/- 0.0044` recall). All 2,279,445 missed seed-trial decisions were assigned to Benign.
 
-The manuscript now distinguishes semantic absorption for SlowrateDoS from a more fundamental representation-and-rejection failure for UDPFlood.
+The manuscript distinguishes semantic absorption for SlowrateDoS from a more fundamental representation-and-rejection failure for UDPFlood.
 
 ## Repository layout
 
@@ -56,13 +56,13 @@ scripts/plot_mdpi_manuscript_figures.py
                                       Publication-ready plotting from saved results
 scripts/generate_mdpi_remaining_figures.sh
                                       One-command figure and archive workflow
-results/mdpi_r1/                      Matched 5G-NIDD result tables
+results/mdpi_r1/                      Matched 5G-NIDD result tables and figure data
 results/mdpi_r1_ciciot/               CICIoT2023 transfer-stress result tables
-manuscript/                           Revised MDPI source, figures, bibliography, responses
+manuscript/                           Revised split LaTeX source and bibliography
 docs/MDPI_ROUND1_FIGURE_RESULTS.md    Diagnostic interpretation and reproduction notes
 ```
 
-Raw datasets and local run directories are intentionally not redistributed.
+Raw datasets and local run directories are intentionally not redistributed. Final binary figure PDFs and response-letter documents are contained in the author resubmission package and are reproducible from the committed code and derived results.
 
 ## Installation
 
@@ -103,4 +103,4 @@ results/mdpi_r1/xmag_mdpi_remaining_figures.zip
 
 ## Data and result policy
 
-Only code, configurations, derived summary metrics, and publication figures are committed. Obtain 5G-NIDD and CICIoT2023 from their official distribution sources and follow their terms of use. Raw third-party datasets and full local run arrays remain outside the repository.
+Only code, configurations, derived summary metrics, figure data, and manuscript source are committed. Obtain 5G-NIDD and CICIoT2023 from their official distribution sources and follow their terms of use. Raw third-party datasets and full local run arrays remain outside the repository.
