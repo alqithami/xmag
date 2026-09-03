@@ -1,0 +1,2 @@
+holdout,seed,n_samples,top1_agreement,top3_jaccard_mean,absolute_rank_spearman_mean,proxy_seconds_total,treeshap_seconds_total,speedup_treeshap_over_proxy
+SlowrateDoS,42,1851,0.4089681253376553,0.4160994057266343,0.9079381461938738,0.027837665984407067,2.034150374995079,73.07187233780604
