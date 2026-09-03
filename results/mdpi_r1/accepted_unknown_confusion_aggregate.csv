@@ -1,0 +1,4 @@
+held_out_attack,assigned_known_class,count,accepted_unknown_fraction
+slowratedos,Benign,787,0.0030903707659564444
+slowratedos,HTTPFlood,253875,0.9969096292340436
+udpflood,Benign,2279445,1.0
