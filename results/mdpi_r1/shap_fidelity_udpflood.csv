@@ -1,0 +1,2 @@
+holdout,seed,n_samples,top1_agreement,top3_jaccard_mean,absolute_rank_spearman_mean,proxy_seconds_total,treeshap_seconds_total,speedup_treeshap_over_proxy
+UDPFlood,42,1896,0.27056962025316456,0.6501054852320675,0.9367295022486816,0.02761758299311623,4.327103874995373,156.67931100538078
