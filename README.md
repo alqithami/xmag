@@ -1,108 +1,101 @@
 # X-MAG-IDS
 
-**X-MAG-IDS** is a reproducible research repository for **explanation-aware multi-agent intrusion detection** in 5G-enabled IoT networks.
+X-MAG-IDS studies **communication-constrained, source-partitioned open-set intrusion detection** for 5G/IoT traffic. Local source monitors encode compact class, attribution-proxy, and anomaly evidence; a known-class head and a separately calibrated open-set head operate on that evidence.
 
-The current frozen method is:
+## Current confirmatory evidence
+
+The current MDPI Mathematics revision uses one protocol across all methods:
+
+- 5G-NIDD leave-one-attack-family-out evaluation over eight attack families;
+- five seeds: `7, 21, 42, 84, 123`;
+- forty matched seed–holdout trials per principal method;
+- source ownership derived from leakage-excluded `sVid` metadata;
+- split-conformal operation at a nominal 5% known-traffic false-positive level;
+- the same training/validation/test construction for methods, baselines, and ablations.
+
+The most compact full-evidence configuration is `X-MAG-COS-16Q`: a 16-byte message using binary16 evidence values. Across the forty matched trials it obtained:
 
 ```text
-X-MAG-COS-24B = top-1 class evidence + top-1 explanation evidence + local anomaly scalar
+known macro-F1       0.998748 ± 0.000294
+unknown AUROC        0.902236 ± 0.176277
+unknown recall       0.723842 ± 0.371420
+mean known FPR       0.049728
+maximum known FPR    0.051040
 ```
 
-Each local agent sends a 24-byte message. A coalition classifier predicts known attack classes, and a separate composite open-set head detects unknown attacks using message residual, owner-agent uncertainty, and anomaly evidence.
+The 16-, 20-, and 24-byte full-evidence variants are essentially equivalent in this experiment. The repository therefore treats 16 bytes as the compact operating point and 24 bytes as the float32 reference, rather than claiming that 24 bytes is uniquely optimal.
 
-## Current status
+These results also establish important limits:
 
-The repository has moved beyond synthetic smoke testing. The current main result uses real 5G-NIDD `Encoded.csv` with leave-one-attack-family-out evaluation across eight attack holdouts and a three-seed stability sweep over random states `7`, `42`, and `123`.
+- coordinator uncertainty was not significantly inferior or superior to the composite head after multiplicity correction;
+- the source-aware all-agent logit average was significantly weaker;
+- centralized full-feature Random Forest remained a strong upper bound;
+- UDPFlood remained a difficult open-set family;
+- CICIoT2023 remained a stress test rather than a generalization success.
 
-Three-seed stability result from `results/tables/table_seed_stability_cos24_overall.csv`:
+## Repository layout
 
 ```text
-X-MAG-COS-24B
-known macro-F1       = 0.998053 +/- 0.000496
-unknown AUROC        = 0.943859 +/- 0.093135
-unknown recall       = 0.839499 +/- 0.279391
-false-alarm rate     = 0.050306 +/- 0.000836
-worst unknown AUROC  = 0.709369
-worst unknown recall = 0.218584
-message size         = 24 bytes per flow
+configs/                         Holdout configurations
+scripts/mdpi_revision_*.py       Protocol-matched revision experiments
+scripts/run_mdpi_round1_all.sh   Resumable full revision suite
+scripts/export_mdpi_hard_holdout_support.py
+                                 No-heredoc ROC/histogram/confusion exporter
+results/mdpi_r1/                 Matched 5G-NIDD results and figures
+results/mdpi_r1_ciciot/          CICIoT2023 stress-test results
+results/archives/                Exact result/code archives
+docs/MDPI_ROUND1_RUNBOOK.md      Reproduction and raw-support instructions
+docs/MDPI_ROUND1_RESULTS.md      Result interpretation
 ```
 
-The earlier single-seed result for seed `42` was stronger on the hardest UDPFlood case, but the three-seed sweep gives the more conservative paper claim. UDPFlood remains the limiting holdout.
+Raw datasets are intentionally not redistributed.
 
-## Install
+## Installation
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-mdpi-r1.txt
 ```
 
-## Dataset setup
-
-The dataset is not redistributed here. Download `Encoded.zip` from the 5G-NIDD dataset page, then place/extract it locally:
-
-```bash
-mkdir -p data/5G-NIDD
-unzip -o data/5G-NIDD/Encoded.zip -d data/5G-NIDD/encoded_extracted
-cp data/5G-NIDD/encoded_extracted/Encoded.csv data/5G-NIDD/Encoded.csv
-```
-
-Confirm:
-
-```bash
-ls -lh data/5G-NIDD/Encoded.csv
-wc -l data/5G-NIDD/Encoded.csv
-```
-
-The real encoded file used in our run has about `1,215,891` lines including the header.
-
-## Audit the real dataset
-
-```bash
-python xmag_pipeline.py audit --csv data/5G-NIDD/Encoded.csv --outdir runs/real_5g_nidd_audit
-```
-
-Expected attack labels:
+The real 5G-NIDD encoded file is expected at:
 
 ```text
-Benign, HTTPFlood, ICMPFlood, SYNFlood, SYNScan, SlowrateDoS, TCPConnectScan, UDPFlood, UDPScan
+data/5G-NIDD/Encoded.csv
 ```
 
-Use the exact label names. The real dataset uses `SYNFlood`, not `SYN Flood`; and `UDPScan`, not `UDP Scan`.
-
-## Reproduce the frozen all-holdout COS run
+## Reproduce the full matched revision suite
 
 ```bash
-for CFG in configs/holdouts/real_5g_nidd_*.yaml
-do
-  NAME=$(basename "$CFG" .yaml)
-  echo "Running composite $NAME"
-
-  python scripts/xmag_composite_open_score_diagnostic.py \
-    --config "$CFG" \
-    --out "runs/composite_${NAME}" \
-    --top-m 1 2 \
-    --k-values 1 \
-    --gamma 0.25
-done
+bash scripts/run_mdpi_round1_all.sh
 ```
 
-Use `X-MAG-COS-24B` as the main method: `top_m=1`, `k=1`, and score `linear_max_resid_owner_b025__uncert_anomaly_b05_gamma_0.25`.
+The runner is resumable and skips completed trials that already contain `metrics.csv`.
 
-## Seed-stability sweep
+## Generate the remaining hard-holdout support
 
-Run the complete small stability experiment:
+Do not use a shell heredoc. Run the checked-in exporter:
 
 ```bash
-bash scripts/run_seed_stability_cos24.sh
-python scripts/aggregate_seed_stability.py
+python scripts/export_mdpi_hard_holdout_support.py --runs-root runs/mdpi_r1
 ```
 
-This runs all eight 5G-NIDD holdouts for random states `7`, `42`, and `123`, then writes:
+It creates:
 
 ```text
-results/tables/table_seed_stability_cos24_all_rows.csv
-results/tables/table_seed_stability_cos24_by_attack.csv
-results/tables/table_seed_stability_cos24_overall.csv
+results/mdpi_r1/mdpi_hard_holdout_support.zip
 ```
+
+If the local matched-run folders no longer contain `score_components.npz`, rerun only the two required seed-42 hard holdouts, then export:
+
+```bash
+python scripts/mdpi_revision_trial.py --config configs/holdouts/real_5g_nidd_udpflood.yaml --seed 42 --skip-heavy-baselines --out runs/mdpi_r1_raw/seed42/real_5g_nidd_udpflood
+python scripts/mdpi_revision_trial.py --config configs/holdouts/real_5g_nidd_slowratedos.yaml --seed 42 --skip-heavy-baselines --out runs/mdpi_r1_raw/seed42/real_5g_nidd_slowratedos
+python scripts/export_mdpi_hard_holdout_support.py --runs-root runs/mdpi_r1_raw
+```
+
+## Data and result policy
+
+Only derived metrics, figures, configurations, and code are committed. Obtain 5G-NIDD and CICIoT2023 from their official distribution sources and follow their terms of use. The exact matched revision result archives are retained under `results/archives/`.

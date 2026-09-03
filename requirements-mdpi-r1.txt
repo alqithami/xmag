@@ -1,0 +1,12 @@
+# Dependencies for the protocol-matched MDPI Mathematics revision suite.
+# Install after requirements.txt:
+#   python -m pip install -r requirements-mdpi-r1.txt
+numpy>=1.23
+pandas>=1.5
+scipy>=1.10
+scikit-learn>=1.1
+PyYAML>=6.0
+joblib>=1.2
+psutil>=5.9
+matplotlib>=3.7
+shap>=0.45
