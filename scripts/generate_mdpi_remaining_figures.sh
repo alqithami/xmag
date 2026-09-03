@@ -90,29 +90,29 @@ copy_required "$HARD_ROOT/accepted_unknown_confusion_aggregate.csv" "$FINAL_ROOT
 copy_required "$HARD_ROOT/accepted_unknown_confusion_by_seed.csv" "$FINAL_ROOT/support/"
 copy_required "$HARD_ROOT/environment_manifest.json" "$FINAL_ROOT/support/"
 
-cat > "$FINAL_ROOT/FIGURE_MANIFEST.txt" <<'EOF'
-Main manuscript figures
------------------------
-main/pareto_bytes_auroc.pdf
-  Communication payload versus mean unknown-family AUROC.
-
-main/per_family_open_set.pdf
-  Mean AUROC and split-conformal 5% recall for each held-out 5G-NIDD family.
-
-Reviewer-requested hard-holdout figures
----------------------------------------
-hard_holdouts/roc_udpflood.pdf
-hard_holdouts/roc_slowratedos.pdf
-  Mean ROC curves across available seeds, with one-standard-deviation bands.
-
-hard_holdouts/score_histogram_udpflood.pdf
-hard_holdouts/score_histogram_slowratedos.pdf
-  Known-versus-held-out composite-score distributions.
-
-hard_holdouts/accepted_unknown_confusion_udpflood.pdf
-hard_holdouts/accepted_unknown_confusion_slowratedos.pdf
-  Known classes assigned to held-out flows that were not rejected.
-EOF
+printf '%s\n' \
+  'Main manuscript figures' \
+  '-----------------------' \
+  'main/pareto_bytes_auroc.pdf' \
+  '  Communication payload versus mean unknown-family AUROC.' \
+  '' \
+  'main/per_family_open_set.pdf' \
+  '  Mean AUROC and split-conformal 5% recall for each held-out 5G-NIDD family.' \
+  '' \
+  'Reviewer-requested hard-holdout figures' \
+  '---------------------------------------' \
+  'hard_holdouts/roc_udpflood.pdf' \
+  'hard_holdouts/roc_slowratedos.pdf' \
+  '  Mean ROC curves across available seeds, with one-standard-deviation bands.' \
+  '' \
+  'hard_holdouts/score_histogram_udpflood.pdf' \
+  'hard_holdouts/score_histogram_slowratedos.pdf' \
+  '  Known-versus-held-out composite-score distributions.' \
+  '' \
+  'hard_holdouts/accepted_unknown_confusion_udpflood.pdf' \
+  'hard_holdouts/accepted_unknown_confusion_slowratedos.pdf' \
+  '  Known classes assigned to held-out flows that were not rejected.' \
+  > "$FINAL_ROOT/FIGURE_MANIFEST.txt"
 
 rm -f "$FINAL_ZIP"
 (
