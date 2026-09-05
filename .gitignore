@@ -10,14 +10,31 @@ venv/
 
 # Do not commit raw datasets or local run artifacts.
 data/5G-NIDD/
+data/CICIoT2023*/
+data/CSV/
 data/raw/
 runs/
 artifacts/
 *.joblib
 *.pkl
 *.parquet
+*.zip
 
-# LaTeX build artifacts.
+# Generated result figures and per-flow support remain reproducible locally.
+results/**/figures/
+results/**/manuscript_figures/
+results/**/hard_holdout_support/
+
+# Publication files are maintained by the authors and journal, not here.
+manuscript/
+paper/
+papers/
+submission/
+submissions/
+responses/
+response_to_reviewers/
+
+# LaTeX build artifacts should never be committed accidentally.
 *.aux
 *.log
 *.out
@@ -26,5 +43,5 @@ artifacts/
 *.fls
 *.fdb_latexmk
 
-# Curated result tables under results/tables/ may be tracked.
+# Curated CSV/JSON result summaries under results/ may be tracked.
 results/generated/

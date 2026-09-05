@@ -1,17 +1,19 @@
 cff-version: 1.2.0
-title: "X-MAG-IDS: Explanation-as-Communication for Lightweight Multi-Agent Intrusion Detection in 5G-IoT Networks"
-message: "If you use this repository, please cite the associated manuscript and this software artifact."
+title: "X-MAG-COS: Communication-Constrained Open-Set Intrusion Detection"
+message: "If you use this software or its derived results, please cite the associated peer-reviewed publication and this software repository."
 type: software
 authors:
   - family-names: "Alqithami"
-    given-names: "Placeholder"
+    given-names: "Saad"
 repository-code: "https://github.com/alqithami/xmag"
-version: "0.1.0"
-date-released: "2026-06-29"
+version: "1.0.0"
+date-released: "2026-09-05"
 license: MIT
 keywords:
   - intrusion detection
+  - 5G security
   - IoT security
-  - 5G networks
-  - multi-agent systems
-  - explainable AI
+  - open-set recognition
+  - distributed monitoring
+  - explainable artificial intelligence
+  - communication-efficient learning
