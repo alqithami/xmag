@@ -111,4 +111,4 @@ The same checks run automatically on Python 3.11 and 3.12 through GitHub Actions
 
 ## Data and artifact policy
 
-Only code, configurations, derived summary metrics, and figure data are committed. Obtain 5G-NIDD and CICIoT2023 from their official distribution sources and follow their terms of use. Raw datasets, full per-flow arrays, generated archives, manuscript files, and publisher materials remain outside the repository.
+Only code, configurations, derived summary metrics, and figure data are committed. Obtain 5G-NIDD and CICIoT2023 from their official distribution sources and follow their terms of use. 
