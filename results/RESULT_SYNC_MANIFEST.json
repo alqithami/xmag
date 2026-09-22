@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "base_commit": "959130d09b5ab8a38ce3cc6844f60124605b5d8c",
+  "scope": "Post-processing synchronization; no model retraining or new measurements.",
+  "sources": {
+    "xmag_mdpi_round1_outputs.zip": {
+      "sha256": "04cbbb2789b25eeda78f649cbcdd1044f09ebe8b066510295a6057d2565e2696",
+      "size_bytes": 336190
+    },
+    "mdpi_r1_ciciot.zip": {
+      "sha256": "76f92f4194720227323df1c26a8960c6beaac9f09d2a5e3b781b2cfc6d1d99a3",
+      "size_bytes": 174616
+    },
+    "xmag_github_update_with_figures.zip": {
+      "sha256": "270b23d5000a4522506886808ef596096dd7fb9b864cd71bf046d6d230ec8012",
+      "size_bytes": 380208
+    },
+    "category_counts_by_label.csv": {
+      "sha256": "a54daefaea0419578b722b8e080aee87be0f25de31332203267f65043f31371d",
+      "size_bytes": 1217
+    }
+  },
+  "validation": {
+    "5G-NIDD": {
+      "metric_rows": 640,
+      "method_score_budget_groups": 16,
+      "matched_trials_per_group": 40,
+      "seeds": [
+        7,
+        21,
+        42,
+        84,
+        123
+      ],
+      "held_out_families": 8
+    },
+    "CICIoT2023": {
+      "metric_rows": 112,
+      "method_score_budget_groups": 16,
+      "matched_trials_per_group": 7,
+      "seeds": [
+        42
+      ],
+      "held_out_categories": 7
+    },
+    "protocol_matched_summary_unchanged": true,
+    "summary_comparison_absolute_tolerance": 1e-12,
+    "summary_comparison_relative_tolerance": 1e-12,
+    "frontier_rows_per_dataset": 8,
+    "frontier_rule": "One prespecified score per method; score ablations remain in protocol_matched_summary.csv.",
+    "per_family_method": "X-MAG-COS-16Q",
+    "per_family_score": "composite",
+    "per_family_recall": "unknown_recall_conformal05",
+    "per_family_sd": "sample standard deviation, undefined for a single seed (blank CSV cell)"
+  },
+  "outputs": {
+    "results/mdpi_r1/message_pareto.csv": {
+      "sha256": "b9e4293d3209798f3cc7b7874fa0b3e31edb40e3c68a3e6b8315d4a5441d71bf",
+      "rows": 8
+    },
+    "results/mdpi_r1/per_family_summary.csv": {
+      "sha256": "7dbc99a1ed07fbb1c90d6b97586b7a4721d725fe5a42d2cb3650104f13b317fc",
+      "rows": 8
+    },
+    "results/mdpi_r1_ciciot/message_pareto.csv": {
+      "sha256": "85146f90143604c9444758b2f9172d0769b5cd34bedaa3ee45dc06f50df42f69",
+      "rows": 8
+    },
+    "results/mdpi_r1_ciciot/per_family_summary.csv": {
+      "sha256": "3fa563bae6512edbfdc9bd82967ffddea6a03a5e6c9652f962866ba24f80d853",
+      "rows": 7
+    },
+    "results/mdpi_r1_ciciot/category_counts_by_label.csv": {
+      "sha256": "a54daefaea0419578b722b8e080aee87be0f25de31332203267f65043f31371d",
+      "rows": 34
+    }
+  }
+}
