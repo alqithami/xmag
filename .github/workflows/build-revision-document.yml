@@ -1,0 +1,43 @@
+name: Build revision document
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: Temporary HTTPS URL of the author-provided complete LaTeX source
+        required: true
+        type: string
+      response_pdf_url:
+        description: Optional existing reviewer-response PDF
+        required: false
+        type: string
+      response_tex_url:
+        description: Optional editable reviewer-response LaTeX
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install TeX and PDF utilities
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-pictures texlive-fonts-recommended lmodern poppler-utils
+      - name: Compile author-provided source without committing it
+        env:
+          SOURCE_URL: ${{ inputs.source_url }}
+          RESPONSE_PDF_URL: ${{ inputs.response_pdf_url }}
+          RESPONSE_TEX_URL: ${{ inputs.response_tex_url }}
+        run: python scripts/build_revision_document.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: XMAG_Round2_Revised_Manuscript_and_Response
+          path: document_build/output/
+          retention-days: 7
