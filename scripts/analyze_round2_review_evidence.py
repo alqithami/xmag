@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Reanalyse the author-supplied Round-2 encoding comparison; no training.
+"""Reanalyse author-supplied Round-2 evidence; no training or test-label tuning.
 
-The input is a lossless projection of 80 alpha=0.05 rows (40 matched pairs)
-from xmag_round2_review_text.txt, section mdpi_r2/all_metrics_round2.csv.
-It is NOT a substitute for the full audit archive or the executed audit code.
+Inputs are lossless selected-column projections of the author's text export.
+They are not substitutes for the full audit archive or executed training code.
 """
 from __future__ import annotations
 import csv
@@ -53,6 +52,31 @@ def write_csv(path, rows):
         w=csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader(); w.writerows(rows)
 
+def peer_summary():
+    path = INPUT.with_name('peer_ideal_loss1_alpha005.csv')
+    with path.open(newline='', encoding='utf-8') as f:
+        rows = list(csv.DictReader(f))
+    keys = [(int(r['seed']),r['held_out_attack'],r['method'],r['channel']) for r in rows]
+    expected=set(itertools.product(SEEDS, {'UDPFlood','SlowrateDoS'}, {'peer_context','owner_entropy_control'}, {'ideal','loss_only_1pct'}))
+    assert len(keys)==40 and set(keys)==expected
+    results=[]
+    for family, method, channel in itertools.product(sorted({'UDPFlood','SlowrateDoS'}),['owner_entropy_control','peer_context'],['ideal','loss_only_1pct']):
+        selected=[r for r in rows if (r['held_out_attack'],r['method'],r['channel'])==(family,method,channel)]
+        rec={'held_out_attack':family,'method':method,'channel':channel,'n_seeds':5}
+        for metric in ['unknown_auroc','unknown_recall_conditional','unknown_recall_end_to_end']:
+            x=np.array([float(r[metric]) for r in selected])
+            rec[metric+'_mean']=float(x.mean())
+            rec[metric+'_std']=float(x.std(ddof=1))
+        results.append(rec)
+    write_csv(OUT/'peer_ideal_loss1_summary.csv',results)
+    diagnostics=[]
+    for family in ['UDPFlood','SlowrateDoS']:
+        x={ (int(r['seed']),r['method'],r['channel']): float(r['unknown_auroc']) for r in rows if r['held_out_attack']==family }
+        change=np.array([x[s,'peer_context','loss_only_1pct']-x[s,'peer_context','ideal'] for s in sorted(SEEDS)])
+        peer_minus_owner=np.array([x[s,'peer_context','ideal']-x[s,'owner_entropy_control','ideal'] for s in sorted(SEEDS)])
+        diagnostics.append({'family':family,'max_absolute_loss1_auroc_change':float(np.abs(change).max()),'mean_peer_minus_owner_ideal_auroc':float(peer_minus_owner.mean())})
+    return {'input_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'summaries':results,'diagnostics':diagnostics}
+
 def main():
     with INPUT.open(newline='', encoding='utf-8') as f:
         rows=list(csv.DictReader(f))
@@ -67,7 +91,6 @@ def main():
     for i, metric in enumerate(METRICS):
         a,b=cols[metric+'_16Q'],cols[metric+'_12B']
         d=a-b
-        # Round only differences used for signed ranks, avoiding false floating ties.
         dr=np.round(d,12)
         nonzero=dr[dr!=0]
         w=wilcoxon(dr, zero_method='wilcox', alternative='two-sided', method='approx') if len(nonzero) else None
@@ -94,7 +117,7 @@ def main():
                 row[metric+'_'+layout+'_std']=float(x.std(ddof=1))
         family_rows.append(row)
     write_csv(OUT/'per_family_encoding_summary.csv',family_rows)
-    report={'status':'validated_selected_evidence','input_sha256':hashlib.sha256(INPUT.read_bytes()).hexdigest(),'python':platform.python_version(),'numpy':np.__version__,'scipy':scipy.__version__,'round2_dataset_sha256':'7c238e2d5dabbc1afcd01c50db91372d6f6808f7572bb92baeb2df03a18af90c','scope':'40 paired trials at nominal alpha 0.05; no new training; selected columns only','test_family':'four displayed metrics, Holm separately by test type','caution':'Seed-holdout pairs reuse one dataset. Trial-wise tests are descriptive; family-block sensitivity is also reported. Nonsignificance is not equivalence.','statistics':stats,'per_family':family_rows}
+    report={'status':'validated_selected_evidence','input_sha256':hashlib.sha256(INPUT.read_bytes()).hexdigest(),'python':platform.python_version(),'numpy':np.__version__,'scipy':scipy.__version__,'round2_dataset_sha256':'7c238e2d5dabbc1afcd01c50db91372d6f6808f7572bb92baeb2df03a18af90c','scope':'40 paired encoding trials and 40 selected peer rows at nominal alpha 0.05; no new training; selected columns only','test_family':'four displayed metrics, Holm separately by test type','caution':'Seed-holdout pairs reuse one dataset. Trial-wise tests are descriptive; family-block sensitivity is also reported. Nonsignificance is not equivalence.','statistics':stats,'per_family':family_rows,'peer':peer_summary()}
     (OUT/'analysis.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     print('ROUND2_ANALYSIS_BEGIN')
     print(json.dumps(report,indent=2))
