@@ -1,0 +1,31 @@
+name: Round2 result postprocessing
+on:
+  workflow_dispatch:
+  push:
+    branches: [round2-results-review, main]
+    paths:
+      - results/mdpi_r2_review/*.csv
+      - results/mdpi_r2_review/provenance.json
+      - scripts/analyze_round2_selected_results.py
+      - .github/workflows/round2-postprocess.yml
+permissions:
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install postprocessing dependencies
+        run: python -m pip install numpy==2.2.4 pandas==2.2.3 scipy==1.15.2
+      - name: Validate supplied observations and compute paired analyses
+        run: python scripts/analyze_round2_selected_results.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: round2-reviewed-statistics
+          path: results/mdpi_r2_review/derived/
+          if-no-files-found: error
+          retention-days: 30

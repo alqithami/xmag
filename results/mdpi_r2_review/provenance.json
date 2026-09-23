@@ -1,0 +1,23 @@
+{
+  "source_archive": "xmag_round2_audit_results.zip",
+  "source_text_export": "xmag_round2_review_text.txt",
+  "source_dataset_sha256": "7c238e2d5dabbc1afcd01c50db91372d6f6808f7572bb92baeb2df03a18af90c",
+  "executed_reference_core_sha256": "0cf4e433f795196b99698cdeea8951fe3627af46475012c338b1bbd73c75b223",
+  "executed_audit_core_sha256": "9d1c6d046ca910298f49a9e13bfdadc14fd014314b2549ae8bda9b760b98ccbf",
+  "executed_runner_sha256": "8693726c9fe9c2946fc32d70298af2111c79ac32fc7824a90b4255f2cd99f24c",
+  "executed_environment": {"python": "3.12.9 conda-forge", "numpy": "2.5.0", "pandas": "3.0.3", "scikit-learn": "1.9.0"},
+  "protocol": "round2_training_only_screen_packet_decoded_independent_norm7_cal7",
+  "n_trials": 40,
+  "seeds": [7,21,42,84,123],
+  "scope": "Selected aggregate observations copied from the author-supplied text export. No raw traffic, paper, reviewer correspondence, or model training occurs in this analysis.",
+  "selection": {
+    "layout_pairs_alpha005.csv": "all_metrics_round2.csv: alpha=0.05, composite score, 12B and 16Q; three primary metrics",
+    "peer_pairs_alpha005.csv": "peer_context_metrics.csv: alpha=0.05, owner/peer ideal and peer 1% loss; both hard holdouts and all five seeds"
+  },
+  "expected_layout_means": {
+    "f1_12": 0.9988055471163794, "f1_16": 0.9987938275875425,
+    "auc_12": 0.8998768027171952, "auc_16": 0.9054290486482147,
+    "recall_12": 0.7046460408989582, "recall_16": 0.7241284986731309
+  },
+  "interpretation": "R2 is a distinct corrected protocol. Do not merge these values with historical R1 outcomes. Trial-level tests assume independent symmetric paired differences; family-mean sensitivity is reported separately. Nonsignificance is not equivalence."
+}
