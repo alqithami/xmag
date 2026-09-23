@@ -1,0 +1,28 @@
+name: Round2 evidence analysis
+on:
+  push:
+    branches: [revision/round2-evidence-analysis]
+    paths:
+      - 'results/mdpi_r2/review_evidence/**'
+      - 'scripts/analyze_round2_review_evidence.py'
+      - '.github/workflows/round2-evidence-analysis.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install analysis dependencies
+        run: python -m pip install 'numpy>=1.26,<3' 'scipy>=1.11,<2'
+      - name: Verify and analyse retained measurements
+        run: python scripts/analyze_round2_review_evidence.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: round2-derived-statistics
+          path: results/mdpi_r2/review_evidence/derived/
