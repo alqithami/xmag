@@ -1,10 +1,11 @@
 name: Round2 evidence analysis
 on:
   push:
-    branches: [revision/round2-evidence-analysis]
+    branches: [main, revision/round2-evidence-analysis]
     paths:
       - 'results/mdpi_r2/review_evidence/**'
       - 'scripts/analyze_round2_review_evidence.py'
+      - 'scripts/render_round2_histogram_tex.py'
       - '.github/workflows/round2-evidence-analysis.yml'
   workflow_dispatch:
 permissions:
@@ -22,7 +23,10 @@ jobs:
         run: python -m pip install 'numpy>=1.26,<3' 'scipy>=1.11,<2'
       - name: Verify and analyse retained measurements
         run: python scripts/analyze_round2_review_evidence.py
+      - name: Verify empirical histogram populations
+        run: python scripts/render_round2_histogram_tex.py --output results/mdpi_r2/review_evidence/derived/round2_histograms.tex
       - uses: actions/upload-artifact@v4
         with:
           name: round2-derived-statistics
           path: results/mdpi_r2/review_evidence/derived/
+          if-no-files-found: error
