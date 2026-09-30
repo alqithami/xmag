@@ -1,83 +1,101 @@
-# Targeted reviewer extension: replacements, identical FPR, and quantization
+# Reviewer extension: exact FPR, component replacements, and quantization
 
-This isolated extension implements the remaining experimental requests: core-algorithm replaceability, recall at identical realized empirical false-positive rates, and numerical support for a message-quantization/decision-stability argument. No scientific results are fabricated or included in this code release.
+Use **`start.py`**, not the lower-level `run.py`, for the supplied experiment workspace. This launcher binds the extension to the exact Round-2 source snapshot and automatically reuses its retained scores before fitting replacement models. No scientific results are fabricated or supplied with this code release.
 
-## Run in the existing Mac workspace
+## Existing Mac workspace
 
-The workspace need not be a Git checkout. Keep the full dataset at `data/5G-NIDD/Encoded.csv`. The required SHA-256 is `7c238e2d5dabbc1afcd01c50db91372d6f6808f7572bb92baeb2df03a18af90c`.
-
-With the existing virtual environment active and this directory installed as `reviewer_r3`:
-
-```bash
-python -m pip install -r reviewer_r3/requirements.txt
-caffeinate -i python -u reviewer_r3/run.py --root "$PWD"
+```text
+/Users/alqithami/Desktop/2026/July/xmag/xmag_repo
 ```
 
-A full repository clone may instead use `experiments/reviewer_r3/run.py`. No editable installation, Git initialization, heredoc, or new dataset download is required. Do not change packages or scripts after starting the resumable experiment. Already installed requirements are not explicitly upgraded.
+Keep the existing `.venv`. No package upgrade is required for the supplied Python 3.12.9 / NumPy 2.5.0 / pandas 3.0.3 / scikit-learn 1.9.0 environment. The requirements file is for new installations and CI, not an instruction to upgrade an active experiment environment.
+
+Install this directory as `reviewer_r3` in that workspace, then run:
+
+```bash
+caffeinate -i python -u reviewer_r3/start.py --root "$PWD"
+```
+
+The workspace need not be a Git checkout. No editable installation, Git initialization, heredoc, or new dataset download is required. Do not update code or packages after starting the resumable run.
+
+## What the snapshot established
+
+The supplied source inventory contains 40 `round2_scores.npz` files but no fitted model archives under `runs/mdpi_r2`. The score caches contain the three composite layouts (12B, 16Q, 24B), their calibration scores, and the ordered known labels. They do not retain all alternative score components or centralized-model scores.
+
+The launcher therefore performs two distinct stages:
+
+1. Read and validate all 40 retained score archives. Compute retrospective fixed-FPR results for the three original composite layouts **without training**. Check their known-label order against the original split. Save these measurements separately with `retained_round2_` prefixes.
+2. Fit shared reference models once per task for the algorithm replacements, missing controls, and fixed-model precision diagnostic. Cache the new models and scores. Do not relabel these deterministic refits as identical historical fits; report an explicit reconciliation with old scalar results.
+
+The real dataset must remain at `data/5G-NIDD/Encoded.csv`, SHA-256 `7c238e2d5dabbc1afcd01c50db91372d6f6808f7572bb92baeb2df03a18af90c`. The launcher validates the actual source files, source provenance, and existing holdout configurations before expensive work. It does not overwrite or repair those files silently.
+
+## Exact integration points
+
+The real-data preparer is imported directly from the verified local `scripts/xmag_round2_run.py`. Its original train/test row identities are preserved. Validation is halved using **`default_rng(seed+9017).permutation(n_validation)`**, not a newly stratified split. The adapter also preserves the executed class `argmax`, the attribution proxy's intermediate float32 storage, float64 prototype accumulation, and zero-probability entropy convention.
+
+One disclosed reproducibility change is an explicit logistic seed `seed+500` in place of the former `random_state=None`. Source prediction uses one worker to stabilize accumulation; fitting defaults to four workers. The new controls are internally matched and their differences from the retained results are reported, not forced to zero.
+
+`snapshot_protocol.py` selects these audited integration functions before the lower-level run loop executes. It never edits the original Round-2 source.
 
 ## Prespecified experiment
 
-Eight leave-one-attack-family-out tasks times seeds 7, 21, 42, 84, and 123. Every method uses the same explicit 56/7/7/30 known-data split, training-only preprocessing, metadata ownership, and receiver-decoded evidence. Calibration and test rows never fit a detector or normalizer. Shared source models and evidence are reused within each task.
+Eight held-out families times seeds **7, 21, 42, 84, 123**. All alternatives use identical training/normalization/calibration/test observations and a 16-byte full-content message, except explicitly named 12B/24B/full-feature controls. Unknown test labels never select algorithms, mixture weights, or hyperparameters.
 
-Six replacements change one named component block in the 16Q pipeline:
-
-| Block | Reference | Replacement |
+| Replaced block | Reference | Alternative |
 | --- | --- | --- |
-| Local classifier and its model-dependent importance | Random Forest | Extra Trees |
+| Local classifier and model-dependent feature importance | Random Forest | Extra Trees, 30 trees |
 | Local anomaly detector | Isolation Forest | Eight-component diagonal Gaussian mixture |
-| Coordinator classifier | One-versus-rest logistic | Bounded 50-tree Extra Trees |
+| Coordinator classifier | One-versus-rest logistic | Extra Trees, 50 trees, depth 12, minimum leaf 5 |
 | Prototype distance | Standardized RMS/L2 | Standardized mean absolute/L1 |
-| Fusion | Composite rule | Arithmetic mean of the same normalized components |
-| Fusion | Composite rule | Maximum of the same normalized components |
+| Fusion rule | Composite | Arithmetic mean of the same normalized components |
+| Fusion rule | Composite | Maximum of the same normalized components |
 
-GMM uses at most 16,384 training-only rows per source, prespecified before test evaluation. The coordinator replacement uses depth 12 and minimum leaf five. Failed convergence or invalid numerical output is an error, not a successful measurement.
+GMM uses at most 16,384 training-only rows per source; the cap is fixed before evaluation. It does not use test data or pretend to be a full-data fit. Convergence failure is reported as failure, not silently replaced by another algorithm or recorded as success.
 
-The additional controls are 12B, 24B, uncertainty-only on 16Q, and centralized full-feature RF. The full scope is **40 tasks, 11 method/score conditions each, 1,320 nominal operating rows, and 2,640 fixed-FPR rows**. This does not mean 440 independent datasets or 440 separate source-model fits.
+Controls are the reference 16Q, 12B, 24B, uncertainty-only 16Q, and centralized full-feature RF. The extension has **40 tasks, 11 method/score conditions per task, 1,320 nominal rows, and 2,640 fixed-FPR rows**, plus a separate 720-row reanalysis of the exact retained layouts. These are repeated matched evaluations, not 440 independent datasets. The peer, source-occupancy, SHAP and previous full baseline battery are not repeated.
 
-Reference models are fitted once per task and cached in this new extension. Exact historical model caches were not available for verification, so the extension does not assume their compatibility. It automatically compares regenerated controls with available Round-2 scalar results and reports discrepancies; old observations are never silently overwritten or relabeled. The validation-halving rule and full environment are recorded. Use internally matched extension comparisons rather than mixing protocols. The old peer, ownership, SHAP, and full baseline battery are not rerun.
+## Same actual FPR
 
-## Same actual FPR, not merely the same nominal setting
+The primary retrospective comparison permits exactly `floor(target*n_negative)` false positives for each method in a seed/holdout/denominator. Score is primary; ties use a predeclared pseudorandom row-position ordering, shared across methods. The tie seed is fixed at 20260930.
 
-The primary retrospective comparison allows exactly `floor(target * n_negative)` false positives for every method in each seed/holdout/denominator. Score is the primary ordering; ties are ordered by a fixed pseudorandom row-position key, shared across methods. The tie seed is fixed at 20260930 and is not selected from results.
+The achieved fraction is `floor(target*n_negative)/n_negative` and is checked to be identical across methods. Finite samples cannot represent every requested percentage exactly; actual false-positive counts and denominators are exported. Paired tests use recall at these matched **realized** rates.
 
-The actual empirical rate is `floor(target*n_negative)/n_negative`; it is identical across methods. A finite sample cannot always represent exactly 0.1%, 1%, or 5%, so the precise count and achieved fraction are exported. The suite checks that the between-method actual-FPR spread is zero. Paired tests use recall at these matched **realized** rates.
+Companion columns retain ordinary strict-score and inclusive-score endpoints and exact-target **expected** FPR/recall under boundary randomization. Expected values are not described as observed deterministic rates. Both all-known and Benign-only denominators are reported.
 
-Companion columns retain strict-score and inclusive-score threshold endpoints, plus exact-target **expected** FPR/recall under boundary randomization. Those interpolated expectations are not mislabeled as observed deterministic rates. The complete tie information is available for sensitivity analysis.
+These are retrospective test-ROC comparisons. Negative test scores determine their boundaries; unknown scores do not. They are not deployment thresholds fitted without test data. Independent known-calibration operating results remain separate. Benign open-set rejection is only one part of the total IDS false-alert rate.
 
-All-known and Benign-only negative populations are reported separately. These ROC boundaries use the designated negative test population and are retrospective comparisons, not independently selected deployment thresholds. Unknown scores do not select boundaries or weights. Independent known-calibration operating results remain in separate tables. Benign open-set rejection is not the entire IDS false-alert rate.
+## Quantization and theory support
 
-## Quantization diagnostic
+The diagnostic freezes the float32-trained logistic head, prototypes, and normalizers, preserves integer identifiers, and quantizes the calibration and test scalar fields. It propagates input-rounding intervals through sigmoid outputs, normalized OVR probabilities, possible predicted prototype classes, and monotone score fusion. It checks analytic score bounds for **both calibration and test**, the calibration order-statistic shift, and a score-margin upper bound on changed rejection decisions.
 
-The pure precision experiment freezes the float32-trained logistic head, prototypes, and normalizers. It preserves integer identifiers and quantizes calibration/test scalar fields to binary16. Sigmoid and normalized-OVR intervals, possible predicted prototype classes, and monotone fusion bound score perturbations. The experiment checks calibration order-statistic movement and score-margin coverage of rejection changes.
+The fixed diagnostic operator is evaluated in float64 with a reported numerical tolerance. This is not a directed-rounding machine proof, an assertion of mathematical novelty, or a pure-quantization interpretation of different-content/separately refitted methods. The manuscript's theoretical argument still needs to be written and checked against the returned measurements.
 
-The diagnostic numerical operator is evaluated in float64 with an explicit numerical tolerance, not a directed-rounding machine proof. It does not establish a theorem's novelty or supply a pure-quantization interpretation of different-content messages or separately refitted heads. The mathematical statement and proof still require manuscript integration after results are inspected.
+## Progress and resume
 
-## Progress, interruption, and completion
-
-In another terminal:
+In another terminal, from the same workspace and environment:
 
 ```bash
-python reviewer_r3/run.py --root "$PWD" --status
+python reviewer_r3/start.py --root "$PWD" --status
 ```
 
-If interrupted, run the same original command again. Completed fingerprint-matched tasks are skipped; partial tasks reuse their cached models and completed conditions. Do not delete the output directories to resume. Code, data, configuration, and package-version changes are refused rather than mixed.
+After interruption, run the original `caffeinate` command again. Completed fingerprint-matched tasks are skipped; partial tasks reuse cached models and completed conditions. Do not delete output directories or reinstall the extension to resume. Changed code, data, configurations, or package versions are refused rather than mixed.
 
-Outputs are isolated in `runs/mdpi_r3` and `results/mdpi_r3`. Fitted models and full score arrays remain locally cached. At least 10 GiB free disk is required. Keep the machine connected to power, the lid open, and the terminal open. The command prevents idle sleep, not every possible interruption. No full-data runtime estimate is claimed from fixture tests.
+All new outputs are isolated in `runs/mdpi_r3` and `results/mdpi_r3`. At least 10 GiB free disk is required. Keep the Mac connected to power, lid open, and terminal open. `caffeinate` prevents idle sleep, not shutdown or every possible interruption. Fixture timing is not a full-data runtime prediction.
 
-At completion upload these two files:
+## Completion and files to return
+
+A successful full run creates:
 
 ```text
 results/mdpi_r3_review_text.txt
 results/mdpi_r3_reviewer_results.zip
 ```
 
-The text includes all new tables and metadata without requiring ZIP extraction. The ZIP contains code, scalar results, checksums, provenance, and local Round-2 script snapshots when available. Neither output contains the original dataset, fitted models, or per-flow arrays. A failure traceback is saved as `results/mdpi_r3/failure_traceback.txt`.
+Upload both. The text exposes the tables without ZIP extraction; the ZIP contains the analysis, code, source snapshots, checksums, and provenance. Raw traffic, fitted models, and per-flow arrays remain local. They are not included in the sharing archive. The launcher and worker preserve failure tracebacks under `results/mdpi_r3`.
 
-## Validation
+Software tests cover same-realized-FPR counts, scalar ties, expected-FPR accounting, conformal order statistics, exact snapshot splitting/rounding, packet validity, all replacements, analytic quantization checks, packaging, and resume. Integration uses small software fixtures, never invented 5G-NIDD measurements.
 
-Six actual-FPR tests check equal realized false-positive counts, finite-sample targets, score ties, label-independent boundary choice, and deterministic repeatability. Ten further tests cover expected-FPR accounting, conformal cutoffs, packet integrity, overflow rejection, score monotonicity, training-only screening, all substitutions, quantization diagnostics, full packaging, and resumability. Integration uses a labeled software fixture; it is never reported as 5G-NIDD evidence.
-
-Official API references:
+Official APIs:
 - https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html
 - https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html
 - https://scikit-learn.org/stable/modules/generated/sklearn.multiclass.OneVsRestClassifier.html
