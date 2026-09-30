@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Completeness checks, paired statistics, reconciliation, and review packaging."""
+"""Completeness, equal-realized-FPR statistics, reconciliation, and packaging."""
 from __future__ import annotations
 
 import hashlib
 import io
 import itertools
 import json
-import math
 import zipfile
 from pathlib import Path
 
@@ -15,6 +14,7 @@ import pandas as pd
 from scipy import stats
 
 import core as c
+from exact_fpr import empirical_point, TIE_SEED
 
 
 def read_json(p):
@@ -40,9 +40,11 @@ def paired_statistics(fixed, plan):
                     base = f[f.method == 'baseline_16q'].set_index(['seed', 'held_out_attack'])
                     alt = f[f.method == method].set_index(['seed', 'held_out_attack'])
                     if set(base.index) != set(alt.index):
-                        raise ValueError('Unpaired trial coverage in the fixed-FPR comparison.')
+                        raise ValueError('Unpaired trial coverage in fixed-FPR comparison.')
                     base, alt = base.sort_index(), alt.sort_index()
-                    delta = (alt.expected_recall - base.expected_recall).round(12)
+                    if not np.array_equal(base.empirical_fpr.to_numpy(), alt.empirical_fpr.to_numpy()):
+                        raise ValueError('Compared methods do not have identical actual FPR.')
+                    delta = (alt.empirical_recall - base.empirical_recall).round(12)
                     x = delta.to_numpy()
                     block = delta.groupby(level='held_out_attack').mean().to_numpy()
                     key = f'{denom}/{method}/{target}'
@@ -60,6 +62,7 @@ def paired_statistics(fixed, plan):
                     signs = np.array(list(itertools.product([-1.0, 1.0], repeat=len(block))))
                     psign = float(np.mean(np.abs((signs * block).mean(axis=1)) >= abs(block.mean()) - 1e-14))
                     rows.append({'comparison_family': family_name, 'denominator': denom,
+                                 'operating_metric': 'empirical_recall_at_identical_realized_fpr',
                                  'method_minus_baseline': method, 'target_fpr': target,
                                  'n_pairs': len(x), 'n_holdout_blocks': len(block),
                                  'mean_delta_recall': float(x.mean()), 'median_delta_recall': float(np.median(x)),
@@ -78,10 +81,9 @@ def paired_statistics(fixed, plan):
 
 
 def reconcile(root, nominal, out):
-    """Compare regenerated controls without pretending historical equivalence."""
+    """Compare regenerated controls without asserting historical equivalence."""
     p = root / 'results/mdpi_r2/all_metrics_round2.csv'
-    old = None
-    source = None
+    old, source = None, None
     if p.exists():
         old, source = pd.read_csv(p), str(p.relative_to(root))
     else:
@@ -94,7 +96,7 @@ def reconcile(root, nominal, out):
                     source = str(zpath.relative_to(root)) + ':' + names[0]
     if old is None:
         c.atomic_json(out / 'round2_reconciliation.json', {'status': 'historical_rows_not_available_locally',
-             'interpretation': 'Use new internally matched extension comparisons. Do not overwrite or relabel historical results.'})
+             'interpretation': 'Use new internally matched comparisons; do not relabel historical results.'})
         return
     mappings = {'baseline_16q': ('X-MAG-COS-16Q', 'composite'),
                 'control_12b': ('Class+anomaly-12B', 'composite'),
@@ -118,13 +120,14 @@ def reconcile(root, nominal, out):
     pd.DataFrame(results).to_csv(out / 'round2_control_reconciliation.csv', index=False)
     c.atomic_json(out / 'round2_reconciliation.json', {'status': 'reported_without_forcing_agreement',
         'historical_source': source, 'paired_rows': len(results),
-        'interpretation': 'This extension is a fresh matched execution. Examine discrepancies before updating manuscript tables; equality is not assumed.'})
+        'interpretation': 'Fresh matched extension. Examine discrepancies before manuscript integration; equality is not assumed.'})
 
 
 def finish(root, name, code_dir):
     out, runroot = root / 'results' / name, root / 'runs' / name
     plan = read_json(out / 'PLAN.json')
     nominal, fixed, quant, splitinfo = [], [], [], []
+    print('Verifying saved scores and constructing identical-realized-FPR comparisons...', flush=True)
     for seed, holdout in plan['tasks']:
         folder = runroot / f'seed{seed}' / holdout
         marker = folder / 'COMPLETE.json'
@@ -142,7 +145,12 @@ def finish(root, name, code_dir):
             if not score_path.exists() or c.sha256(score_path) != rec['score_file_sha256']:
                 raise RuntimeError(f'Exact score archive missing/corrupt: {score_path}')
             nominal.extend(rec['nominal'])
-            fixed.extend(rec['fixed_fpr'])
+            with np.load(score_path, allow_pickle=False) as scores:
+                known, unknown = scores['known_score'], scores['unknown_score']
+                benign = scores['benign_mask'].astype(bool)
+                for row in rec['fixed_fpr']:
+                    negative = known if row['denominator'] == 'all_known' else known[benign]
+                    fixed.append({**row, **empirical_point(negative, unknown, row['target_fpr'])})
         for row in read_json(folder / 'quantization_diagnostics.json'):
             quant.append({'seed': seed, 'held_out_attack': holdout, **row})
         splitinfo.append(read_json(folder / 'split_manifest.json'))
@@ -151,11 +159,15 @@ def finish(root, name, code_dir):
     fk = ['seed', 'held_out_attack', 'method', 'denominator', 'target_fpr']
     expected_n = len(plan['tasks']) * len(c.METHODS) * len(c.LEVELS)
     if nominal.duplicated(nk).any() or fixed.duplicated(fk).any() or len(nominal) != expected_n or len(fixed) != 2 * expected_n:
-        raise ValueError('Duplicate/missing nominal or fixed-FPR result rows.')
+        raise ValueError('Duplicate/missing nominal or fixed-FPR rows.')
     if np.max(np.abs(fixed.expected_fpr - fixed.target_fpr)) > 1e-12:
-        raise ValueError('At least one matched expected FPR differs from target.')
+        raise ValueError('Expected randomized FPR differs from target.')
     if not ((fixed.strict_fpr <= fixed.target_fpr + 1e-12) & (fixed.inclusive_fpr >= fixed.target_fpr - 1e-12)).all():
-        raise ValueError('Missing deterministic bracket around fixed FPR.')
+        raise ValueError('Invalid deterministic FPR brackets.')
+    spreads = fixed.groupby(['seed', 'held_out_attack', 'denominator', 'target_fpr']).empirical_fpr.agg(['min', 'max'])
+    spread = float((spreads['max'] - spreads['min']).max())
+    if spread != 0:
+        raise ValueError('Methods were not compared at identical actual empirical FPR.')
     nominal.to_csv(out / 'all_nominal_metrics.csv', index=False)
     fixed.to_csv(out / 'all_fixed_fpr_metrics.csv', index=False)
     quant.to_csv(out / 'quantization_diagnostics.csv', index=False)
@@ -165,10 +177,14 @@ def finish(root, name, code_dir):
     summary = nominal.groupby(['method', 'alpha'])[cols].agg(['mean', 'std', 'min', 'max'])
     summary.columns = ['_'.join(x) for x in summary.columns]
     summary.reset_index().to_csv(out / 'nominal_summary.csv', index=False)
-    fsum = fixed.groupby(['method', 'denominator', 'target_fpr'])[['expected_recall', 'expected_fpr', 'strict_fpr', 'strict_recall', 'inclusive_fpr', 'inclusive_recall', 'boundary_probability']].agg(['mean', 'std', 'min', 'max'])
+    metrics = ['empirical_recall', 'empirical_fpr', 'expected_recall', 'expected_fpr',
+               'strict_fpr', 'strict_recall', 'inclusive_fpr', 'inclusive_recall', 'boundary_probability']
+    fsum = fixed.groupby(['method', 'denominator', 'target_fpr'])[metrics].agg(['mean', 'std', 'min', 'max'])
     fsum.columns = ['_'.join(x) for x in fsum.columns]
     fsum.reset_index().to_csv(out / 'fixed_fpr_summary.csv', index=False)
-    fixed.groupby(['held_out_attack', 'method', 'denominator', 'target_fpr']).expected_recall.agg(['mean', 'std', 'count']).reset_index().to_csv(out / 'fixed_fpr_by_family.csv', index=False)
+    byfamily = fixed.groupby(['held_out_attack', 'method', 'denominator', 'target_fpr'])[['empirical_recall', 'empirical_fpr', 'expected_recall']].agg(['mean', 'std', 'count'])
+    byfamily.columns = ['_'.join(x) for x in byfamily.columns]
+    byfamily.reset_index().to_csv(out / 'fixed_fpr_by_family.csv', index=False)
     paired_statistics(fixed, plan).to_csv(out / 'paired_fixed_fpr_statistics.csv', index=False)
     reconcile(root, nominal, out)
     c.atomic_json(out / 'RUN_COMPLETENESS.json', {'status': 'software_fixture_only' if plan['fixture'] else 'complete_for_prespecified_extension',
@@ -176,10 +192,11 @@ def finish(root, name, code_dir):
         'conditions_per_task': len(c.METHODS), 'nominal_rows': len(nominal), 'fixed_fpr_rows': len(fixed),
         'denominators': c.CONFIG['fixed_fpr_denominators'], 'levels': c.LEVELS,
         'max_expected_fpr_error': float(np.max(np.abs(fixed.expected_fpr - fixed.target_fpr))),
+        'max_between_method_empirical_fpr_spread': spread, 'fixed_tie_seed': TIE_SEED,
         'quantization_numerical_violations': int(quant.numerical_bound_violations.sum()),
         'raw_scores_retained_locally': True, 'models_retained_locally': True,
         'historical_results_modified': False, 'fingerprint': plan['signature']})
-    notes = '''# Interpretation of the reviewer extension\n\nThis package contains newly measured component substitutions, matched expected-FPR comparisons, independent-calibration operating results, and fixed-model quantization diagnostics.\n\nFixed-FPR recall is retrospective ROC evaluation: reject above an empirical negative-score boundary and randomize at that boundary with the exported probability. Its FPR equals the target in expectation over randomization. It is not an observed deterministic threshold and it is not a threshold selected independently of the test sample. The strict and inclusive endpoints report the actual attainable deterministic brackets. Separate all-known and Benign-only denominators are retained.\n\nFor deployable operating points, use the independent known calibration rows, not test-FPR boundaries. All detector fitting, upstream refitting after replacements, and component normalization exclude calibration and test observations. Models are not selected by test recall.\n\nEach replacement changes one named component block. Replacing the local forest also changes the importance proxy belonging to that forest; it does not hold that model-dependent quantity artificially fixed. Replacing the residual keeps the same decoded input, classifier, and class prototype centers and changes standardized RMS distance to standardized mean absolute distance. Mean and maximum fusion consume the same three normalized evidence components without additional model training. GMM uses at most 16,384 training-only rows per source and eight diagonal-covariance components; this cap is prespecified, not optimized on held-out labels.\n\nThe extension re-fits shared reference components once per task and caches them. It does not assume undocumented historical model caches have compatible splits or parameters. Inspect round2_control_reconciliation.csv before replacing old manuscript numbers. Model-training randomness, prediction accumulation, and the explicitly recorded validation-halving rule may cause differences; new comparisons must remain internally matched.\n\nQuantization checks freeze the float32-trained head, prototypes, and normalizers. The same integer identities are retained while both calibration and test scalar fields are encoded in binary16. The diagnostic numerical operator is evaluated in float64. Analytic sigmoid intervals, normalized OVR probability intervals, possible predicted-class prototype sets, and monotone fusion bound score changes. Calibration order-statistic movement is bounded by the maximum calibration-score perturbation. Decision changes must lie within the exported score-margin band. Numerical validation has a stated 1e-8 tolerance and is not a directed-rounding machine proof. This comparison is distinct from separately refitting the 16Q head, and does not establish a quantization theorem for different message content.\n\nTests and bootstrap/sign-flip analyses do not create independent deployment datasets. The primary multiplicity family has six replacements times three FPR levels, separately for each denominator and statistical test. Four reference comparisons form separate exploratory families. No equivalence conclusion follows from nonsignificance.\n'''
+    notes = '''# Interpretation of the reviewer extension\n\nThe primary fixed-FPR comparison uses exactly the same realized false-positive count floor(target*n_negative) for every method within a seed/holdout/denominator. Scores are ordered first; ties are ordered by a predeclared pseudorandom row-position key, identical across methods. The realized FPR is floor(target*n_negative)/n_negative, with its exact denominator and count exported. A requested percentage may not be an attainable finite-sample fraction, but the actual fraction is identical across methods. The tie seed is fixed at 20260930 and is not selected after seeing results. These are retrospective test-ROC boundaries, not deployment thresholds fitted without test data.\n\nCompanion columns report an ordinary strict-score threshold, an inclusive threshold, and boundary randomization. The expected randomized FPR is exactly the target, even when the integer target is unattainable; expected recall and deterministic endpoints are all retained. It is not mislabeled as an observed deterministic result. The primary paired statistics use realized empirical recall, not interpolated recall.\n\nBoth all-known and Benign-only denominators are evaluated. Independent-calibration operating results remain separate. Test observations are never used to fit source models, classifiers, prototypes, or normalizers. Unknown labels do not select weights or replacement configurations. Benign open-set rejection is only one part of the entire IDS false-alert rate.\n\nEach replacement changes one named block. A new local forest also has its own importance proxy. The residual replacement changes standardized RMS distance to standardized mean absolute distance with the same centers. Mean and maximum fusion use the same normalized components. GMM uses at most 16,384 training-only rows per source and eight diagonal-covariance components; the cap is prespecified.\n\nShared reference components are refitted once per task and cached. This extension does not assume undocumented historical model caches have compatible parameters or splits. Inspect round2_control_reconciliation.csv before replacing old manuscript numbers. Differences in prediction accumulation, environment, and the explicit validation-halving rule can matter; all new competitive results remain internally matched.\n\nThe pure quantization check freezes the float32-trained head, prototypes, and normalizers, preserves integer fields, and quantizes both calibration and test packet scalars. The fixed diagnostic operator is evaluated in float64. Analytic sigmoid/OVR intervals, possible predicted-class prototypes, and monotone fusion bound score changes; calibration order-statistic movement and decision-margin coverage are checked. The tolerance is 1e-8, not a directed-rounding machine proof. This is not a pure quantization interpretation of different-content formats or separately retrained heads.\n\nStatistical replication reuses one dataset. The primary multiplicity family consists of six replacements times three FPR levels, separately for each denominator and test. Four controls form separate exploratory families. Family-block intervals and sign-flip tests retain holdout structure. Nonsignificance does not establish equivalence.\n'''
     (out / 'INTERPRETATION.md').write_text(notes, encoding='utf-8')
     excluded = {'STATUS.json', 'failure_traceback.txt'}
     files = [p for p in sorted(out.rglob('*')) if p.is_file() and p.name not in excluded and not p.name.startswith('.')]

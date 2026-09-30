@@ -35,4 +35,6 @@ jobs:
           OPENBLAS_NUM_THREADS: '1'
           OMP_NUM_THREADS: '1'
           MKL_NUM_THREADS: '1'
-        run: python experiments/reviewer_r3/test_extension.py
+        run: |
+          python experiments/reviewer_r3/test_actual_fpr.py
+          python experiments/reviewer_r3/test_extension.py
