@@ -1,7 +1,7 @@
 name: Reviewer R3 extension tests
 on:
   push:
-    branches: [main, 'revision/reviewer-r3-*']
+    branches: [main, 'revision/reviewer-r3-*', 'revision/round3-*']
     paths:
       - 'experiments/reviewer_r3/**'
       - '.github/workflows/reviewer-r3-tests.yml'
@@ -38,3 +38,4 @@ jobs:
         run: |
           python experiments/reviewer_r3/test_actual_fpr.py
           python experiments/reviewer_r3/test_extension.py
+          python experiments/reviewer_r3/test_snapshot_protocol.py
