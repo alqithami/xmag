@@ -1,0 +1,30 @@
+name: Assemble author source artifact
+on:
+  push:
+    branches: ['revision/source-assembly-*']
+    paths:
+      - 'scripts/assemble_author_source.py'
+      - 'docs/source_assembly_request.json'
+      - '.github/workflows/assemble-author-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile the generic assembler
+        run: python -m py_compile scripts/assemble_author_source.py
+      - name: Assemble and structurally verify complete author documents
+        run: python scripts/assemble_author_source.py docs/source_assembly_request.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: XMAG_Round3_Complete_Overleaf_Source
+          path: document_build/output/
+          retention-days: 90
+          if-no-files-found: error
