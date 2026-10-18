@@ -1,0 +1,277 @@
+{
+  "configuration": {
+    "beta": 0.25,
+    "coordinator_et_depth": 12,
+    "coordinator_et_leaf": 5,
+    "coordinator_et_trees": 50,
+    "dataset": {
+      "drop_columns": [
+        "Attack Tool",
+        "Label",
+        "sVid",
+        "dVid",
+        "54"
+      ],
+      "label_column": "Attack Type",
+      "leakage_patterns": [
+        "label",
+        "attack tool",
+        "attack_tool",
+        "scenario",
+        "timestamp",
+        "time",
+        "source ip",
+        "destination ip",
+        "src ip",
+        "dst ip",
+        "srcport",
+        "dstport"
+      ]
+    },
+    "entropy_zero_convention": "scipy.special.xlogy with exact zero probabilities",
+    "executed_round2_source_sha256": {
+      "mdpi_revision_common.py": "0cf4e433f795196b99698cdeea8951fe3627af46475012c338b1bbd73c75b223",
+      "xmag_round2_core.py": "9d1c6d046ca910298f49a9e13bfdadc14fd014314b2549ae8bda9b760b98ccbf",
+      "xmag_round2_run.py": "8693726c9fe9c2946fc32d70298af2111c79ac32fc7824a90b4255f2cd99f24c"
+    },
+    "fixed_fpr_convention": "expected FPR from randomized acceptance at one tied score boundary; also strict and inclusive endpoints",
+    "fixed_fpr_denominators": [
+      "all_known",
+      "benign_only"
+    ],
+    "fixed_fpr_primary": "identical realized integer false-positive count; predeclared row-position tie order",
+    "fixed_fpr_secondary": "boundary-randomized expected target and scalar strict/inclusive endpoints",
+    "gamma": 0.25,
+    "gmm_components": 8,
+    "gmm_max_iter": 200,
+    "gmm_train_cap": 16384,
+    "if_max_samples": 4096,
+    "if_trees": 100,
+    "known_test_fraction": 0.3,
+    "lambda": 0.5,
+    "local_class_ties": "argmax, as executed in Round-2 packet_message",
+    "local_holdout_configuration_sha256": {
+      "HTTPFlood": "c3e91974e2c6f7b9bf38575a6a736623d4397eb683ba47b57b71902866c5ac8c",
+      "ICMPFlood": "e5f195d8f772ed18962174e7b8e7d447ff12b1604e04f21bc5d0a96a3cc4aced",
+      "SYNFlood": "bccbc896b9b516e108c7ea04255d04ebbac41608b0c3c390915c6c0ed96d059a",
+      "SYNScan": "804475dd0c0cac89739d243f59bef43c12db76e75be74cba11c75fd1273f4c92",
+      "SlowrateDoS": "9391d47e9910719ac79d1b4b4a09d4b693d90ebe7e70ffd3b7f99d870bfdc3ce",
+      "TCPConnectScan": "c637ab3ab21a0365dcfc110ecd255932df92339cdb732e66024293b0ae5308e5",
+      "UDPFlood": "a23647dc829cd27c193490b7d0c2ec3a3932262cb0b462479f2e1803e1b2ef1f",
+      "UDPScan": "69da195c32d91e40323b3861e819a7dc82c5c7722070ba951d29926d2207fbf2"
+    },
+    "logistic_random_state": "seed+500; explicit reproducibility improvement versus old None",
+    "nominal_slots": 8,
+    "normalization_calibration_split": "default_rng(seed+9017).permutation(n_val); first floor(n/2) normalization, rest calibration",
+    "normalization_fraction_of_validation": 0.5,
+    "prediction_parallelism": 1,
+    "prototype_accumulation": "float64 std and mean from decoded float32 training messages",
+    "proxy_rounding": "selected value first stored float32, then packet scalar conversion",
+    "quantization_calibration_bound": "analytic propagated interval, not only observed calibration drift",
+    "rf_trees": 30,
+    "validation_within_trainval": 0.2
+  },
+  "dataset_sha256": "7c238e2d5dabbc1afcd01c50db91372d6f6808f7572bb92baeb2df03a18af90c",
+  "environment": {
+    "joblib": "1.6.0",
+    "jobs": 4,
+    "numpy": "2.5.0",
+    "pandas": "3.0.3",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "processor": "arm",
+    "python": "3.12.9 | packaged by conda-forge | (main, Mar  4 2025, 22:44:42) [Clang 18.1.8 ]",
+    "scipy": "1.18.1",
+    "sklearn": "1.9.0"
+  },
+  "fixture": false,
+  "methods": [
+    "baseline_16q",
+    "local_extratrees_16q",
+    "anomaly_gmm_16q",
+    "coordinator_extratrees_16q",
+    "residual_l1_16q",
+    "fusion_mean_16q",
+    "fusion_max_16q",
+    "control_12b",
+    "control_24b",
+    "uncertainty_16q",
+    "central_rf"
+  ],
+  "protocol_note": "Fresh matched extension. Shared components cached within each task. Historical tables are not overwritten and are not assumed bit-identical.",
+  "signature": "59893106638c4f136aab608ccde71736b8d87e57181484475ed116497a671e8c",
+  "source_hashes": {
+    "analysis.py": "75e3f5fadc784d3b3c36fa1dd98ccc5b82378a6ba36bc955f7f51e85f9abea45",
+    "core.py": "67aa055d561524a14325f3f6bcc27e1a7f4919f53db52a5dd03d28454f594c0f",
+    "exact_fpr.py": "634e044c62dd45e8acaf90ecaed5f7255d1006e579952fde8b727215dad8bee1",
+    "reference.py": "0cf4e433f795196b99698cdeea8951fe3627af46475012c338b1bbd73c75b223",
+    "run.py": "d29d41bf65de6b720da3a2b2f8a0555e3a2a265bb5bbd6832586f694710cbd54",
+    "snapshot_protocol.py": "236ea3235423c827d3225efb5521dd83cb6f7a24c2870e300768c2c1099c2378",
+    "start.py": "c3187c165168610260573244c404a82056a1de05e165301bfd4ec444ea981484",
+    "test_actual_fpr.py": "2317d369e2e4d3c54c09b5430d9b8811b8ecbac36ec5a226e8f54a67be2637d0",
+    "test_extension.py": "64df9decc1835fa8cea5f167903abfa5ef6a5c99858067f06dc7d014649aab65",
+    "test_snapshot_protocol.py": "1001cdaaa4e79c2e0da55d667315eb41833a33f2f9d9545e170b1201d16bc744"
+  },
+  "tasks": [
+    [
+      7,
+      "HTTPFlood"
+    ],
+    [
+      7,
+      "ICMPFlood"
+    ],
+    [
+      7,
+      "SYNFlood"
+    ],
+    [
+      7,
+      "SYNScan"
+    ],
+    [
+      7,
+      "SlowrateDoS"
+    ],
+    [
+      7,
+      "TCPConnectScan"
+    ],
+    [
+      7,
+      "UDPFlood"
+    ],
+    [
+      7,
+      "UDPScan"
+    ],
+    [
+      21,
+      "HTTPFlood"
+    ],
+    [
+      21,
+      "ICMPFlood"
+    ],
+    [
+      21,
+      "SYNFlood"
+    ],
+    [
+      21,
+      "SYNScan"
+    ],
+    [
+      21,
+      "SlowrateDoS"
+    ],
+    [
+      21,
+      "TCPConnectScan"
+    ],
+    [
+      21,
+      "UDPFlood"
+    ],
+    [
+      21,
+      "UDPScan"
+    ],
+    [
+      42,
+      "HTTPFlood"
+    ],
+    [
+      42,
+      "ICMPFlood"
+    ],
+    [
+      42,
+      "SYNFlood"
+    ],
+    [
+      42,
+      "SYNScan"
+    ],
+    [
+      42,
+      "SlowrateDoS"
+    ],
+    [
+      42,
+      "TCPConnectScan"
+    ],
+    [
+      42,
+      "UDPFlood"
+    ],
+    [
+      42,
+      "UDPScan"
+    ],
+    [
+      84,
+      "HTTPFlood"
+    ],
+    [
+      84,
+      "ICMPFlood"
+    ],
+    [
+      84,
+      "SYNFlood"
+    ],
+    [
+      84,
+      "SYNScan"
+    ],
+    [
+      84,
+      "SlowrateDoS"
+    ],
+    [
+      84,
+      "TCPConnectScan"
+    ],
+    [
+      84,
+      "UDPFlood"
+    ],
+    [
+      84,
+      "UDPScan"
+    ],
+    [
+      123,
+      "HTTPFlood"
+    ],
+    [
+      123,
+      "ICMPFlood"
+    ],
+    [
+      123,
+      "SYNFlood"
+    ],
+    [
+      123,
+      "SYNScan"
+    ],
+    [
+      123,
+      "SlowrateDoS"
+    ],
+    [
+      123,
+      "TCPConnectScan"
+    ],
+    [
+      123,
+      "UDPFlood"
+    ],
+    [
+      123,
+      "UDPScan"
+    ]
+  ],
+  "version": "xmag_reviewer_extension_snapshot_v1.1"
+}

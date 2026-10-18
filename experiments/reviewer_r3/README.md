@@ -1,11 +1,11 @@
 # Reviewer extension: exact FPR, component replacements, and quantization
 
-Use **`start.py`**, not the lower-level `run.py`, for the supplied experiment workspace. This launcher binds the extension to the exact Round-2 source snapshot and automatically reuses its retained scores before fitting replacement models. No scientific results are fabricated or supplied with this code release.
+Use **`start.py`**, not the lower-level `run.py`, for the supplied experiment workspace. This launcher binds the extension to the exact Round-2 source snapshot and automatically reuses its retained scores before fitting replacement models. The accepted manuscript's aggregate evidence is published separately in the repository and in the 38-file evidence archive; no raw per-flow scores, datasets or fitted models are included.
 
 ## Existing Mac workspace
 
 ```text
-/Users/alqithami/Desktop/2026/July/xmag/xmag_repo
+/path/to/your/xmag-workspace
 ```
 
 Keep the existing `.venv`. No package upgrade is required for the supplied Python 3.12.9 / NumPy 2.5.0 / pandas 3.0.3 / scikit-learn 1.9.0 environment. The requirements file is for new installations and CI, not an instruction to upgrade an active experiment environment.

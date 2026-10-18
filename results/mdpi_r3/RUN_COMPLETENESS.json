@@ -1,0 +1,25 @@
+{
+  "completed_tasks": 40,
+  "conditions_per_task": 11,
+  "denominators": [
+    "all_known",
+    "benign_only"
+  ],
+  "expected_tasks": 40,
+  "fingerprint": "59893106638c4f136aab608ccde71736b8d87e57181484475ed116497a671e8c",
+  "fixed_fpr_rows": 2640,
+  "fixed_tie_seed": 20260930,
+  "historical_results_modified": false,
+  "levels": [
+    0.001,
+    0.01,
+    0.05
+  ],
+  "max_between_method_empirical_fpr_spread": 0.0,
+  "max_expected_fpr_error": 6.938893903907228e-18,
+  "models_retained_locally": true,
+  "nominal_rows": 1320,
+  "quantization_numerical_violations": 0,
+  "raw_scores_retained_locally": true,
+  "status": "complete_for_prespecified_extension"
+}

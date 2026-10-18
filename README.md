@@ -1,5 +1,15 @@
 # X-MAG-COS
 
+## Accepted-paper evidence — October 2026
+
+**Current accepted-manuscript results:** see [Round-3 publication evidence](docs/ROUND3_PUBLICATION_EVIDENCE.md), the browsable tables under [`results/mdpi_r3/`](results/mdpi_r3/), and the [complete 38-file evidence archive](artifacts/xmag_r3_complete_evidence.zip). The archive retains source snapshots, derived row-level and aggregate tables, split manifests, quantization diagnostics, environment/protocol fingerprints, and SHA-256 checksums. The manuscript and proof files are deliberately not stored here.
+
+The 5G-NIDD fixed-FPR comparison uses 8 holdout families × 5 seeds, 11 conditions per task, and matched realized all-known false-positive counts. Mean unknown recall at targeted 0.1% / 1% / 5% FPR: **16-byte reference 0.0934 / 0.5484 / 0.7242**; **centralized RF 0.6781 / 0.7557 / 0.7942**; **local Extra Trees replacement 0.0336 / 0.5238 / 0.8062**. Extra Trees is not uniformly superior across operating points. The corrected historical UDPFlood 16Q AUROC is **0.4818 ± 0.0190**, underscoring a decisive failure case, not a deployment claim.
+
+The original Round-1/Round-2 numbers and pilot sections below remain **historical snapshots**; they do not supersede the accepted-paper protocol. Full third-party datasets, saved fitted models, and per-flow arrays are intentionally not redistributed. Therefore, the public derived-evidence audit is not equivalent to a turnkey reproduction of all private runs.
+
+---
+
 X-MAG-COS is a reproducible software and derived-results repository for **communication-constrained, source-partitioned open-set intrusion detection** in 5G/IoT traffic. Source monitors encode class evidence, an attribution proxy, and anomaly evidence; a known-class head and a separately calibrated open-set head operate on the compact message.
 
 ## Repository scope
@@ -8,7 +18,7 @@ This repository contains the implementation, experiment configurations, tests, d
 
 Raw third-party datasets and full local run arrays are also excluded. They can be regenerated from the public datasets and checked-in scripts.
 
-## Confirmatory protocol
+## Historical Round-1 confirmatory protocol
 
 The current evidence uses one matched protocol across all principal methods and reproducible baselines:
 
@@ -41,7 +51,7 @@ The results also establish important limits:
 - the attribution field is a lightweight proxy and is not equivalent to full SHAP attribution;
 - targeted source-message manipulation requires authentication, trust weighting, or redundant observation.
 
-## Hard-family diagnostics
+## Historical Round-1 hard-family diagnostics
 
 The per-flow analysis is complete for UDPFlood and SlowrateDoS:
 
@@ -84,7 +94,7 @@ The real 5G-NIDD encoded file is expected locally at:
 data/5G-NIDD/Encoded.csv
 ```
 
-## Reproduce the matched suite
+## Reproduce the historical Round-1 suite
 
 ```bash
 bash scripts/run_mdpi_round1_all.sh
@@ -92,7 +102,7 @@ bash scripts/run_mdpi_round1_all.sh
 
 The runner is resumable and skips completed trials containing `metrics.csv`.
 
-## Reproduce the diagnostic figures
+## Reproduce the historical diagnostic figures
 
 ```bash
 bash scripts/generate_mdpi_remaining_figures.sh

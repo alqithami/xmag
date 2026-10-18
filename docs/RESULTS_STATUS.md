@@ -1,3 +1,5 @@
+> **Historical pilot summary:** This document predates the accepted 2026 *Mathematics* manuscript and does not define its final operating points. For publication-stage evidence, see [Round-3 publication evidence](ROUND3_PUBLICATION_EVIDENCE.md).
+
 # Results status
 
 The current main method is **X-MAG-COS-24B**.

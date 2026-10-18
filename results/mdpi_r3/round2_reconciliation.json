@@ -1,0 +1,6 @@
+{
+  "historical_source": "results/mdpi_r2/all_metrics_round2.csv",
+  "interpretation": "Fresh matched extension. Examine discrepancies before manuscript integration; equality is not assumed.",
+  "paired_rows": 480,
+  "status": "reported_without_forcing_agreement"
+}

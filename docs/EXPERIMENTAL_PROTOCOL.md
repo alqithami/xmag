@@ -1,3 +1,5 @@
+> **Historical v0.1 pilot protocol:** This document is retained for provenance and is not the accepted-manuscript experimental protocol. See [Round-3 publication evidence](ROUND3_PUBLICATION_EVIDENCE.md).
+
 # X-MAG-IDS experimental protocol v0.1
 
 ## Main empirical claim
