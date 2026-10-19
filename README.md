@@ -1,8 +1,6 @@
 # X-MAG-COS
 
-## Accepted-paper evidence — October 2026
-
-**Current accepted-manuscript results:** see [Round-3 publication evidence](docs/ROUND3_PUBLICATION_EVIDENCE.md), the browsable tables under [`results/mdpi_r3/`](results/mdpi_r3/), and the [complete 38-file evidence archive](artifacts/xmag_r3_complete_evidence.zip). The archive retains source snapshots, derived row-level and aggregate tables, split manifests, quantization diagnostics, environment/protocol fingerprints, and SHA-256 checksums. The manuscript and proof files are deliberately not stored here.
+**Current manuscript results:** see [Round-3 publication evidence](docs/ROUND3_PUBLICATION_EVIDENCE.md), the browsable tables under [`results/mdpi_r3/`](results/mdpi_r3/), and the [complete 38-file evidence archive](artifacts/xmag_r3_complete_evidence.zip). The archive retains source snapshots, derived row-level and aggregate tables, split manifests, quantization diagnostics, environment/protocol fingerprints, and SHA-256 checksums. The manuscript and proof files are deliberately not stored here.
 
 The 5G-NIDD fixed-FPR comparison uses 8 holdout families × 5 seeds, 11 conditions per task, and matched realized all-known false-positive counts. Mean unknown recall at targeted 0.1% / 1% / 5% FPR: **16-byte reference 0.0934 / 0.5484 / 0.7242**; **centralized RF 0.6781 / 0.7557 / 0.7942**; **local Extra Trees replacement 0.0336 / 0.5238 / 0.8062**. Extra Trees is not uniformly superior across operating points. The corrected historical UDPFlood 16Q AUROC is **0.4818 ± 0.0190**, underscoring a decisive failure case, not a deployment claim.
 
