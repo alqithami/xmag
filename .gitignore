@@ -1,6 +1,8 @@
+# Python environments and generated files
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ruff_cache/
 .venv/
 venv/
 .env
@@ -8,24 +10,32 @@ venv/
 .vscode/
 .idea/
 
-# Do not commit raw datasets or local run artifacts.
-data/5G-NIDD/
-data/CICIoT2023*/
-data/CSV/
-data/raw/
+# Third-party traffic, caches, models, checkpoints and generated full runs
+data/*
+!data/README.md
 runs/
-artifacts/
 *.joblib
 *.pkl
 *.parquet
-*.zip
-
-# Generated result figures and per-flow support remain reproducible locally.
+*.npz
+*.npy
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.onnx
+results/publication_reproduction/
+results/mdpi_r2_reproduced/
+results/generated/
 results/**/figures/
 results/**/manuscript_figures/
 results/**/hard_holdout_support/
 
-# Publication files are maintained by the authors and journal, not here.
+# Generated archive files, except the manually audited publication evidence
+*.zip
+!artifacts/xmag_r3_complete_evidence.zip
+
+# Publisher assets and private working documents
 manuscript/
 paper/
 papers/
@@ -34,7 +44,7 @@ submissions/
 responses/
 response_to_reviewers/
 
-# LaTeX build artifacts should never be committed accidentally.
+# LaTeX scratch
 *.aux
 *.log
 *.out
@@ -42,6 +52,3 @@ response_to_reviewers/
 *.blg
 *.fls
 *.fdb_latexmk
-
-# Curated CSV/JSON result summaries under results/ may be tracked.
-results/generated/

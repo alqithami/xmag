@@ -1,122 +1,70 @@
 # X-MAG-COS
 
-**Current manuscript results:** see [Round-3 publication evidence](docs/ROUND3_PUBLICATION_EVIDENCE.md), the browsable tables under [`results/mdpi_r3/`](results/mdpi_r3/), and the [complete 38-file evidence archive](artifacts/xmag_r3_complete_evidence.zip). The archive retains source snapshots, derived row-level and aggregate tables, split manifests, quantization diagnostics, environment/protocol fingerprints, and SHA-256 checksums. The manuscript and proof files are deliberately not stored here.
+**Compact Evidence Messaging for Source-Partitioned Open-Set Intrusion Detection in 5G-IoT Networks**
 
-The 5G-NIDD fixed-FPR comparison uses 8 holdout families × 5 seeds, 11 conditions per task, and matched realized all-known false-positive counts. Mean unknown recall at targeted 0.1% / 1% / 5% FPR: **16-byte reference 0.0934 / 0.5484 / 0.7242**; **centralized RF 0.6781 / 0.7557 / 0.7942**; **local Extra Trees replacement 0.0336 / 0.5238 / 0.8062**. Extra Trees is not uniformly superior across operating points. The corrected historical UDPFlood 16Q AUROC is **0.4818 ± 0.0190**, underscoring a decisive failure case, not a deployment claim.
+Reproducibility companion to the article by **Mohammed Alliheedi and Saad Alqithami**, accepted in *Mathematics* (2026; manuscript mathematics-4541032). Bibliographic DOI and final issue details will be added when the publisher assigns them.
 
-The original Round-1/Round-2 numbers and pilot sections below remain **historical snapshots**; they do not supersede the accepted-paper protocol. Full third-party datasets, saved fitted models, and per-flow arrays are intentionally not redistributed. Therefore, the public derived-evidence audit is not equivalent to a turnkey reproduction of all private runs.
+X-MAG-COS exchanges compact class, anomaly, and optional attribution evidence between source-specific monitors and a coordinator. A known-class classifier and a separately calibrated open-set detector evaluate previously unseen attacks. This repository contains the implementation, evaluation protocol, aggregated measurements, tests, and provenance needed to inspect the reported evidence.
 
----
+## Start here
 
-X-MAG-COS is a reproducible software and derived-results repository for **communication-constrained, source-partitioned open-set intrusion detection** in 5G/IoT traffic. Source monitors encode class evidence, an attribution proxy, and anomaly evidence; a known-class head and a separately calibrated open-set head operate on the compact message.
-
-## Repository scope
-
-This repository contains the implementation, experiment configurations, tests, derived aggregate results, statistical analyses, and figure-generation code. The journal manuscript, response letters, publisher templates, and other publication assets are intentionally maintained outside this repository.
-
-Raw third-party datasets and full local run arrays are also excluded. They can be regenerated from the public datasets and checked-in scripts.
-
-## Historical Round-1 confirmatory protocol
-
-The current evidence uses one matched protocol across all principal methods and reproducible baselines:
-
-- 5G-NIDD leave-one-attack-family-out evaluation over eight attack families;
-- five seeds: `7, 21, 42, 84, 123`;
-- forty matched seed-holdout trials per principal method;
-- source ownership derived from leakage-excluded `sVid` metadata;
-- split-conformal operation at a nominal 5% known-traffic false-positive level;
-- the same train/validation/test construction for methods, baselines, and ablations.
-
-The compact operating point is **X-MAG-COS-16Q**, a 16-byte binary16 evidence encoding. Across the forty matched trials it obtained:
-
-```text
-known macro-F1       0.998748 +/- 0.000294
-unknown AUROC        0.902236 +/- 0.176277
-unknown recall       0.723842 +/- 0.371420
-mean known FPR       0.049728
-maximum known FPR    0.051040
-```
-
-The 16-, 20-, and 24-byte full-evidence variants are detection-equivalent in this experiment. The repository therefore treats 16 bytes as the most compact evaluated full-content point and 24 bytes as the float32 reference; it does not claim that 24 bytes is uniquely optimal.
-
-The results also establish important limits:
-
-- coordinator uncertainty is not significantly inferior or superior to the composite head after multiplicity correction;
-- the source-aware all-agent logit average is significantly weaker;
-- centralized full-feature Random Forest remains a strong upper bound;
-- UDPFlood remains a decisive open-set failure case;
-- CICIoT2023 remains a transfer stress test rather than a generalization success;
-- the attribution field is a lightweight proxy and is not equivalent to full SHAP attribution;
-- targeted source-message manipulation requires authentication, trust weighting, or redundant observation.
-
-## Historical Round-1 hard-family diagnostics
-
-The per-flow analysis is complete for UDPFlood and SlowrateDoS:
-
-- SlowrateDoS retains useful ranking (`AUROC 0.8994 +/- 0.0185`) but only `0.3035 +/- 0.1162` recall at the validation 95th-percentile rule. Of 254,662 missed seed-trial decisions, 99.691% were assigned to HTTPFlood.
-- UDPFlood is below random ranking on average (`AUROC 0.4533 +/- 0.0146`) and is almost never rejected (`0.0032 +/- 0.0044` recall). All 2,279,445 missed seed-trial decisions were assigned to Benign.
-
-## Repository layout
-
-```text
-configs/                              Dataset and holdout configurations
-scripts/mdpi_revision_*.py            Protocol-matched experiments and analyses
-scripts/run_mdpi_round1_all.sh        Resumable five-seed revision suite
-scripts/export_mdpi_hard_holdout_support.py
-                                      Per-flow ROC/histogram/confusion exporter
-scripts/plot_mdpi_manuscript_figures.py
-                                      Publication-quality plotting from saved results
-scripts/generate_mdpi_remaining_figures.sh
-                                      One-command figure and archive workflow
-scripts/verify_repository_complete.py Repository integrity and completeness check
-results/mdpi_r1/                      Matched 5G-NIDD summary results and figure data
-results/mdpi_r1_ciciot/               CICIoT2023 transfer-stress summaries
-results/tables/                        Earlier documented experiment tables
-tests/                                Smoke and regression tests
-docs/                                 Reproduction and result interpretation
-```
-
-## Installation
+**Verify the published evidence without downloading traffic datasets:**
 
 ```bash
-python3 -m venv .venv
+git clone https://github.com/alqithami/xmag.git
+cd xmag
+python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install -r requirements.txt
-python -m pip install -r requirements-mdpi-r1.txt
+python -m pip install -r requirements-reproduction.txt
+python scripts/reproduce_paper.py verify
+python -m pytest -q
 ```
 
-The real 5G-NIDD encoded file is expected locally at:
-
-```text
-data/5G-NIDD/Encoded.csv
-```
-
-## Reproduce the historical Round-1 suite
+**Run a synthetic software smoke test** (not scientific evidence):
 
 ```bash
-bash scripts/run_mdpi_round1_all.sh
+python scripts/reproduce_paper.py smoke
 ```
 
-The runner is resumable and skips completed trials containing `metrics.csv`.
-
-## Reproduce the historical diagnostic figures
+**Re-run the real-data study** after obtaining the official 5G-NIDD dataset and placing the expected encoded file at `data/5G-NIDD/Encoded.csv`:
 
 ```bash
-bash scripts/generate_mdpi_remaining_figures.sh
+python scripts/reproduce_paper.py full
 ```
 
-This command reuses existing per-flow score arrays and regenerates only missing UDPFlood or SlowrateDoS support.
+The complete replay is compute-intensive; it is resumable and stores models and flow-level scores locally under the ignored `runs/` directory. The original input file must match SHA-256 `7c238e2d5dabbc1afcd01c50db91372d6f6808f7572bb92baeb2df03a18af90c`. A different data export will be rejected rather than silently substituted. See **[Reproducibility](docs/REPRODUCIBILITY.md)** for requirements and the distinction between a frozen-evidence audit and experimental reruns.
 
-## Verify repository completeness
+## Reported results
 
-```bash
-python scripts/verify_repository_complete.py
-pytest -q
-```
+For the 40 matched seed/attack-holdout instances, the final fixed-false-positive-rate comparison gives the following **mean unknown-attack recall**. The negative population here is all known-traffic observations, and the cutoffs are retrospective, not deployed calibration thresholds.
 
-The same checks run automatically on Python 3.11 and 3.12 through GitHub Actions.
+| Model | 0.1% target FPR | 1% target FPR | 5% target FPR |
+| --- | ---: | ---: | ---: |
+| X-MAG-COS 16Q (16-byte evidence) | 0.0934 | 0.5484 | 0.7242 |
+| Centralized full-feature Random Forest | 0.6781 | 0.7557 | 0.7942 |
+| Local Extra Trees replacement | 0.0336 | 0.5238 | 0.8062 |
+| Mean-fusion replacement | 0.2482 | 0.4492 | 0.5724 |
 
-## Data and artifact policy
+These results do **not** establish superiority at every FPR: centralized RF is strong, and UDPFlood remains a serious open-set failure case. Source metadata identify **two populated partitions**, not eight independent physical devices. The attribution field is a feature-importance proxy, not a complete SHAP explanation. See **[Results and limitations](docs/RESULTS.md)**.
 
-Only code, configurations, derived summary metrics, and figure data are committed. Obtain 5G-NIDD and CICIoT2023 from their official distribution sources and follow their terms of use. 
+## Project contents
+
+| Location | Purpose |
+| --- | --- |
+| `scripts/reproduce_paper.py` | One entry point for evidence audit, smoke test, and full real-data replay |
+| `scripts/verify_release.py` | Standard-library verification of study scope, input/code fingerprints, tables, and archive |
+| `scripts/xmag_round2_*.py`, `scripts/mdpi_revision_common.py` | Preserved, hash-verified core for the 40-task evaluation |
+| `experiments/paper/` | Matched fixed-FPR, ablation, and quantization code and tests |
+| `configs/holdouts/` | Eight held-out attack-family configurations |
+| `results/mdpi_r3/` | Publication-stage aggregate tables, diagnostics, and protocol manifests |
+| `results/mdpi_r1/`, `results/mdpi_r1_ciciot/`, `results/mdpi_r2/` | Supporting analyses retained with their original protocols |
+| `artifacts/xmag_r3_complete_evidence.zip` | Hash-checked 38-file supporting evidence, including execution snapshots |
+| `docs/` | [Data](docs/DATA.md) · [Protocol](docs/REPRODUCIBILITY.md) · [Results](docs/RESULTS.md) · [Provenance](docs/PROVENANCE.md) |
+
+**Data policy:** Third-party raw datasets are not redistributed. Full per-flow arrays and trained models remain local. The public archive allows independent examination of recorded evidence and software tests, but the initial full evaluation requires downloading the specified input and substantial computation. Dataset and licensing instructions appear in [Data](docs/DATA.md).
+
+## Reference, license, and stability
+
+Please cite the *Mathematics* article for the scientific findings and this repository's fixed publication release for the software and evidence. See [`CITATION.cff`](CITATION.cff). Software is distributed under the [MIT License](LICENSE); external datasets retain their original terms.
+
+This publication version freezes the validated study files and derived evidence. Any subsequent developments belong on separate branches/releases and must not silently revise the results cited by the accepted paper.
